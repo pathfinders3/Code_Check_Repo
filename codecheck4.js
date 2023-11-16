@@ -2,28 +2,6 @@
 const cl = (...args) => console.log(...args);
 
 
-let g_start1 = -1;// = Number(ret4[1]);
-let g_long1 = -1;// = Number(ret4[2]);
-let g_lv1 = -1;
-
-//let regFunc = /function (.+\()/g;
-// st1= 'function xx()'
-// reg1.exec(st1)[0]
-
-let regLetBig = /(let .+)=( ?[a-zA-Z0-9,'"\-.\r\n \[\]\(\)]+;)/g;
-// Usage : regLetBig.exec(let1_statement)[1]; ==> 첫번째 괄호 가져옴(A1).
-
-// let a; (대입식 없는 경우의 Reg Ex.)
-// https://regexr.com/6lcpd
-//let regLetSole = /(let [A-Za-z0-9\= \r\n\[\],'"]+;)/g;
-let regLetSole = /(let )([A-Za-z0-9\= \r\n\[\],'"]+;)/g;
-
-// both expr: (let) b; 또는 (let) b=3; (단변/양변 모두 커버하는 식)
-// https://regexr.com/6lcqt  or del?  https://regexr.com/6la79
-let regLetBothExpr = /([a-zA-Z0-9]+)(;| ?= ?[a-zA-Z0-9,'"\-.\r\n \[\]\(\)]+;)/g;
-
-
-
 /**
 함수들의 정의 라인 1줄씩 추출한다.
 결과 예: ["function moveCaret2(posArr) {"]
@@ -66,7 +44,6 @@ RESULT:
 
 * 한줄 주석 예 : e.g. // function gotoLine() {
 */
-
 function extractFuncDefinitions() {
   // Get the <textarea> element by its ID
   const textarea = document.getElementById('code1');
@@ -108,6 +85,52 @@ function extractFuncDefinitions() {
     }
 
     return functionInfo;
+  } else {
+    // Handle the case where the 'code1' element is not found
+    return null;
+  }
+}
+
+// 리스너의 정의만 모아서 리턴해본다
+function extractListenerDefinitions() {
+  // Get the <textarea> element by its ID
+  const textarea = document.getElementById('code1');
+
+  if (textarea) {
+    // Split the content of the textarea into lines
+    const lines = textarea.value.split('\n');
+
+    // Regular expression to match function definitions with parameters
+    const function2Regex = /(\w+)\.addEventListener\(["'](\w+)["'],/;
+    //const function2Regex = /(\w+)\.addEventListener\(["'](\w+)["'],\s*function\s*\(([^)]*)\)\s*{|\w+\.\w+\./;
+	
+    const function2Info = [];
+
+    // Loop through each line and check for function definitions
+    // for (const line of lines) {
+	for (const [lineNumber_pure, line] of lines.entries()) {
+      const match = line.match(function2Regex);
+      if (match) {
+		  cl(match.length);
+		  cl(match[0], "a match114");	// whole match string
+		  cl(match[1], "a match114-1"); //	btnsomething
+		  cl(match[2], "a match114-2");	// click or mousemove...
+		  // cl(match[3], "a match114-3");
+		  // cl(match[4], "a match114-4");
+		  
+		  cl(lineNumber_pure);
+        // Extract the function name (group 1) and parameters (group 2)
+        const functionName = match[1] + '_'+match[2];
+        const parameters = match[2];
+		const isHtmlCall = true;
+		const isRemark = false;
+		
+		const lineNum = 1+parseInt(lineNumber_pure);
+        function2Info.push({ functionName, parameters, isHtmlCall, isRemark, lineNum });
+      }
+    }
+
+    return function2Info;
   } else {
     // Handle the case where the 'code1' element is not found
     return null;
@@ -171,24 +194,27 @@ function extractFunctionCallsWithLineNumbers() {
     const lines = textarea.value.split('\n');
     const define1 = /(function)\s+\w+\(/g;
     const functionCallRegex = /\w+\s*\(.*\);/g;
+	const regRemark = /\/\/\s*\S.+\(.*\);/g;
 
     const functionCallsWithLineNumbers = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-		const isRemark = false;	// true면 흐리게.
-      const match1 = line.match(define1);
-      if (match1) {
-        // Skip function definitions
-        continue;
-      }
+		const line = lines[i];
+		let isRemark = false;	// true면 흐리게.
+		const match1 = line.match(define1);
+		// Skip function definitions 발견한 게 함수 정의 라인이라면, 원하는 라인이 아니다.		
+		if (match1) 
+			continue;
+	  
+		const matchRemark = line.match(regRemark);
+		if (matchRemark) isRemark = true;
 
-      const match2 = line.match(functionCallRegex);
-      if (match2) {
-        const functionName = match2[0];
-        //functionCallsWithLineNumbers.push({ functionName, lineNumber: i + 1 });
-		functionCallsWithLineNumbers.push({ functionName, lineNumber: i + 1, isRemark });
-      }
+		const match2 = line.match(functionCallRegex);
+		if (match2) {
+			const functionName = match2[0];
+			//functionCallsWithLineNumbers.push({ functionName, lineNumber: i + 1 });
+			functionCallsWithLineNumbers.push({ functionName, lineNumber: i + 1, isRemark });
+		}
     }
 
     return functionCallsWithLineNumbers;
@@ -283,9 +309,7 @@ function scrollToLineNumber(textareaId, lineNumber) {
   const averageLineHeight = totalHeight / lines.length;
 
   // Calculate the scroll offset
-  //const scrollToOffset = (lineNumber - 1) * averageLineHeight;
-  // 너무 지나치는 경우가 많아 앞으로 더 당기도록 변경하였다.
-  const scrollToOffset = (lineNumber - 5) * averageLineHeight;
+  const scrollToOffset = (lineNumber - 1) * averageLineHeight;
 
   // Scroll to the approximate position
   textarea.scrollTop = scrollToOffset;
@@ -351,7 +375,7 @@ function generateString(numberOfCharacters) {
 
 // 라인 가기용 다이나믹 버튼 추가 
 // extraValue : 줄 번호.
-function add_GoButton(id, label, extraValue, param_count) {
+function add_GoButton(id, label, extraValue, isRemark, param_count) {
 	// Create a new button element
 	var button = document.createElement('button');
 	const bars = generateString(param_count);
@@ -359,10 +383,17 @@ function add_GoButton(id, label, extraValue, param_count) {
 	// Set the button's attributes
 	button.id = id;
 	button.innerHTML = bars +": "+label;
-	button.title = 'a Go-Button';
-	button.style.fontSize = '16px';
-	button.style.width = 'auto';
-
+	button.title = 'at line ' + id;
+	
+	// 호출이지만 주석처리 됐을 경우, 버튼으로 표시는 해주지만 흐리게 한다.
+	if (isRemark) {
+		button.removeAttribute('class');
+		button.classList.add('btnGotoRemark');
+	} else {
+		button.removeAttribute('class');
+		button.classList.add('btnGotoNormal');
+	}
+	
 	// Set data-extra-value using a data attribute
 	button.dataset.extraValue = extraValue;
 
@@ -421,8 +452,15 @@ function removeSelectTags(divTag) {
 }
  
 
-function generateSelectOptions() { // !!HTML_call
-  const defs00 = extractFuncDefinitions();	// 여기서 Html 콜 여부도 체크해야...
+function generateSelectOptions(defOrLis) { // !!HTML_call
+  // 리스너만 다시 테스트해본다
+  let defs00 = null;
+  
+  if (defOrLis == 0)
+	defs00 = extractFuncDefinitions();	// 여기서 Html 콜 여부도 체크해야...
+  else
+    defs00 = extractListenerDefinitions();	// 여기서 Html 콜 여부도 체크해야...
+  
 
   if (!defs00) {
     console.error("Error: 'code1' element not found.");
@@ -431,11 +469,11 @@ function generateSelectOptions() { // !!HTML_call
 
   // Create a <select> element
   const selectElement = document.createElement('select');
-  selectElement.id = '함수 정의 목록 funcdeflist';
+  selectElement.id = '함수 정의 목록 funcdeflist' + defOrLis;
   selectElement.size = 9;
   selectElement.style.width = 'auto';
 
-  // Add an event listener to the select element for the 'change' event
+  // Add an event listener to the select element for 항목 선택시...
   selectElement.addEventListener('change', function() {
 	  resetGoButtons();	// 버튼 다 지움.
 	  resetTextInDiv('params1');	//div 로그 영역 출력물 지움.
@@ -454,6 +492,7 @@ function generateSelectOptions() { // !!HTML_call
 	
 	setTextInDiv('params1', lineNum + "줄번"); 
 	setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
+	scrollToLineNumber('code1', lineNum-10); // LISTENER 목록에선, 이게 필요:바로 스크롤 한다.
 	
 	const calls1 = extractFunctionCallsWithLineNumbers();	//  모든 함수 호출 부분 모은 것
 	console.log('콜스(소스내 모든 호출들)',calls1.length);	//// 'ham3();', 'ham4(a,b,c);' ham4(d,e,f)
@@ -490,9 +529,9 @@ function generateSelectOptions() { // !!HTML_call
 		//resetTextInDiv('params1');	// DIV 글자 지우기
 		
 		//cl(typeof isHtmlCall, "CALL 2첵 ?");
-		let msg2 = "Non-HTML";
+		let msg2 = " ";//"Non-HTML";
 		if (isHtmlCall) {
-			msg2 = "그러나 !!HTML_call 입니다." + isHtmlCall;
+			msg2 = "그러나 !!HTML_call 입니다. ";
 		}
 		
 		let msgRemark = "주석부는 아님.";
@@ -500,7 +539,8 @@ function generateSelectOptions() { // !!HTML_call
 			msgRemark = "주석부입니다" + isRemark;
 		}
 		
-		const msg1 = lineNum+ ": 🚷 이 함수는 사용되지 않습니다."+gFuncName1+"' 🚷 FNF: Func NOT FOUND 893 " + msg2 + " 그리고 "+msgRemark;
+		//const msg1 = lineNum+ ": 🚷 이 함수는 사용되지 않습니다."+gFuncName1+"' 🚷 FNF: Func NOT FOUND 893 " + msg2 + " 그리고 "+msgRemark;
+		const msg1 = `${lineNum}: 🚷 이 함수는 사용되지 않습니다. ${gFuncName1}' 🚷 FNF: Func NOT FOUND 893 ${msg2} 그리고 ${msgRemark}`;
 		
 		//setTextInDiv('params1', "🚷 이 함수는 사용되지 않습니다 🚷 FNF: Func NOT FOUND 893 ");
 		setTextInDiv('params1', msg1);
@@ -530,7 +570,7 @@ function generateSelectOptions() { // !!HTML_call
 
   if (divContainer) {
     // 리스트박스(SELECT) 추가하다
-	removeSelectTags(divContainer);
+	removeSelectTags(divContainer);	// DIV태그 내에 있는 SELECTBOX들을 모두 제거한다.
     divContainer.appendChild(selectElement);
   } else {
     console.error("Error: 'def1' element not found.");
@@ -549,7 +589,7 @@ function showFuncParams(fname1) {
 
 	// Check if the function information was found
 	if (targetFunctionInfo) {
-	  console.log(`:990: Function Name: ${targetFunctionInfo.functionName}`);
+	  // console.log(`:990: Function Name: ${targetFunctionInfo.functionName}`);
 	  //console.log(`선언된 파라메터 개수: ${targetFunctionInfo.parameters.length}`);
 	  //console.log(`선언된 파라메터들: ${targetFunctionInfo.parameters.join(', ')}`);
 	} else {
@@ -729,3 +769,22 @@ function findStringOccurrences(array, targetString) {
 // const targetString = 'banana';
 // const result = findStringOccurrences(myArray, targetString);
 // console.log(result);
+
+/*
+To get the line number at the caret's position in a textarea, you can use the selectionStart property of the textarea. Here's a function that does that:
+*/
+function getCaretLineNumber(id1) {
+	//const textarea = document.getElementById('code1');
+	const textarea = document.getElementById(id1);
+	
+	if (!textarea || !textarea instanceof HTMLTextAreaElement) {
+		console.error('Invalid textarea element provided.');
+		return -1;
+	}
+
+	const textBeforeCaret = textarea.value.substring(0, textarea.selectionStart);
+	const lineBreaksBeforeCaret = textBeforeCaret.split('\n').length;
+
+	//cl(lineBreaksBeforeCaret, 'lineBreaksBeforeCaret');
+	return lineBreaksBeforeCaret;
+}
