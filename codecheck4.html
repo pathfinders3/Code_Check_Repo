@@ -1,0 +1,270 @@
+<html>
+<head>
+<title>
+새롭게 코드첵 업데이트 (4)
+</title>
+
+<script src='cookie.js'>
+</script> 
+<link rel = "icon" href="./codecheck4.png" type="image/x-icon">
+</head>
+
+
+<!-- <body onunload="WriteCookies()" onload="ReadCookies()" style="background-color:#999;"> -->
+<body style="background-color:#999;">
+
+<style>
+input {
+  margin: 5px auto;
+  font-size: 18px;
+}
+
+
+textarea { 
+	background-color: #121212;
+	color: #efefef;
+  
+	font-size: 16px; 
+	font-family: 'Tahoma';/*, 'Malgun Gothic';*/
+    line-height: 1.5; /* You can adjust this value as needed */
+	/*text-wrap:unrestricted;*/
+	
+    white-space: pre-wrap;  /*Enable text wrap */	
+}
+
+#code1 {
+	width:600px;
+}
+
+	
+.counters {
+	background-color: #eedd66;
+}
+
+.counter_title {
+	background-color: #eeaa33;
+}
+
+select {
+	font-size: 16px;
+}
+
+#params1 {
+	background-color: #eeaa33;
+	font-size: 18px;	
+	font-family: tahoma;
+}
+
+#def1 {
+  display: inline-block;
+
+}
+
+#def2 {
+	display: inline-block;
+	background-color: #eeaa33;
+	font-size: 16px;
+	max-width: 300px;
+	width: fit-content; /* or auto */
+}
+
+input[type="button" i] {
+	background-color: #222;
+	border-radius: 4px;
+	border-style: none;
+	box-sizing: border-box;
+	color: #fff;
+	font-family: "Farfetch Basis","Helvetica Neue",Arial,sans-serif;
+	font-size: 16px;
+	font-weight: 700;
+	line-height: 1.5;
+	margin: 0;
+	max-width: none;
+	min-width: 10px;
+	padding: 3px 5px; /* top-down and left-right */
+}
+
+input[type="button" i]:hover {
+  opacity: .90;
+}
+
+button {
+  background-color: #222;
+  border-style: none;
+  color: #fff;
+}
+
+button:hover {
+	opacity: .80;
+}
+
+
+.btnGotoRemark, .btnGotoNormal {
+  align-items: center;
+  background-color: #222;
+  border: 1px solid #000;
+  box-sizing: border-box;
+  color: #fff;
+  display: inline-flex;
+  fill: #000;
+  font-family: "Farfetch Basis","Helvetica Neue",Arial,sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -.8px;
+  min-width: 140px;
+  max-width: none;
+  width: auto;
+  outline: 0;
+  padding: 3px 5px; /* top-down and left-right */
+  text-align: center;
+  text-decoration: none;
+  /*transition: all .1s;*/
+  touch-action: manipulation;
+
+}
+
+.btnGotoRemark {
+  background-color: #222;
+  color: #777;
+}
+
+
+</style>
+
+<script>
+// 전역 선언
+var gFuncName1 = 'None Function yet';
+
+</script>
+
+
+<script src='codecheck4.js'>
+
+</script>
+
+<div> <img src="codecheck4.png" height=50px> <img src="number2.png" height=50px> Code Check 2 (June 2022~) </div>
+
+<div><input id="caretpos" type="text" size=1 value="." onclick="this.focus(); this.select();"> <input id="letindex" type="text" size=11 value="delim1" onclick="this.focus(); this.select();"></div>
+
+<div> <input id="goto_line" type="text" size=11 value="-1" onclick="this.focus(); this.select();" placeholder="Goto Line"><input type="button" onclick="gotoLine();" value="Go to Line" title="라인으로 간다">
+</div>
+
+
+
+<!-- <div> 
+<label id='counter1'> Never Launched Yet. </label>
+<label id='counter2' class='counters'> variable name </label>
+<span class='counter_title'>Val</span> <label id='counter3' class='counters'> variable type/value </label>
+
+
+</div> -->
+
+<textarea id='code1' rows=20 cols=60>
+{ abc } 
+내부에서만 찾는 루틴 추가  cocos
+
+let a;
+let b = 3;
+
+Lv1 = [ [1,3], [8, 10], [15, 17], ...];
+Lv2 = [ [5,13] ];
+
+
+function hams1(fa1,fab2) { // !!HTML_call
+  regLetBig.lastIndex = 0;
+  regLetSol.lastIndex = 0;
+}
+
+function hams2(txt1) {
+  regLetBig.lastIndex = 0;
+  regLetSol.lastIndex = 0;
+}
+
+ham3();
+ham4(a,b,c);
+
+function ham4(i1, i2) {
+	trop down;
+}
+
+function foo1(i1, i2) {
+	trop down;
+}
+
+foo1(10,11);
+foo1(14,15);
+foo1();
+
+커서는 Lv1, Lv2 속함
+}
+2개를 다 잡는데 왜 그러는 건지
+배열내 1 인덱스서 exit 하는 듯 하다.
+
+커서 위치에서 let a 가 유효함을 앎
+}
+
+</textarea>
+
+
+<label>
+Click 2 Highlight<br>
+
+</label>
+
+<div id='params1'>
+Parameter List<br>
+
+</div>
+
+<div>
+<!-- <input type=button onclick="runRegBigs();" value="Store lets to Listbox" title="JS:runRegBigs - runRegex();"> -->
+
+<input type=button onclick="generateSelectOptions();" value="📰Show 함수선언들" title="JS:resetRegs();">
+
+<span class='counter_title'>
+
+
+
+<input type=button onclick="showCallsOfProcedure();" value="📞 Show Calls" title="함수호출문들을 보여준다">
+
+
+<input type=button onclick="showCallsOfProcedure();" value="📞 하이라이트 단어 문법 분석" title="함수호출 옳은지 분석">
+
+<input type=button onclick="showCallsOfProcedure();" value="📞 리팩터?는 불필요?" title="함수호출 옳은지 분석">
+
+
+
+</div>
+
+<label for="함수 정의 목록 funcdeflist">funcDefList</label><br>
+<div id='def1'>
+<!-- <label for="함수 정의 목록 funcdeflist">funcDefList</label> -->
+
+</div>
+
+<div id='def2'>
+</div>
+
+<br>
+
+
+
+
+
+
+
+Create arrCurl123 🡺 Caret's Array&Let
+
+<!-- onkeydown -->
+
+
+<input type=button onclick="WriteCookies()" value="Write Cookie">
+<input type=button onclick="ReadCookies()" value="Read Cookie">
+
+<textarea id='code2' rows=20 cols=60></textarea>
+
+
+
+
+</body>
+</html>
