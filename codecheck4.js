@@ -293,7 +293,6 @@ function selectLine(textareaId, lineNumber) {
 // 주어진 줄로 텍스트AREA 를 스크롤시킨다.
 function scrollToLineNumber(textareaId, lineNumber) {
   const textarea = document.getElementById(textareaId);
-
   if (!textarea) {
 	console.error(`Textarea with ID ${textareaId} not found.`);
 	return;
@@ -301,19 +300,27 @@ function scrollToLineNumber(textareaId, lineNumber) {
 
   // Split the content by lines
   const lines = textarea.value.split('\n');
-
   // Get the total height of the textarea
   const totalHeight = textarea.scrollHeight;
-
   // Calculate the average line height
   const averageLineHeight = totalHeight / lines.length;
-
   // Calculate the scroll offset
   const scrollToOffset = (lineNumber - 1) * averageLineHeight;
-
   // Scroll to the approximate position
   textarea.scrollTop = scrollToOffset;
 }
+
+/* function scrollToLineNumber(textareaId, lineNumber) {
+  // textarea 요소를 가져옵니다.
+  const textarea = document.getElementById(textareaId);
+
+  // 지정된 줄의 위치를 가져옵니다.
+  const lineNumberOffset = lineNumber * textarea.lineHeight;
+
+  // textarea의 스크롤 위치를 지정된 위치로 설정합니다.
+  textarea.scrollTop = lineNumberOffset;
+} */
+
 
 
 // HTML Listen 인풋 박스에 쓴 그 줄로 간다.
@@ -492,7 +499,9 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	
 	setTextInDiv('params1', lineNum + "줄번"); 
 	setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
-	scrollToLineNumber('code1', lineNum-10); // LISTENER 목록에선, 이게 필요:바로 스크롤 한다.
+	
+	//scrollToLineNumber('code1', lineNum-10); // LISTENER 목록에선, 이게 필요:바로 스크롤 한다.
+	gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
 	
 	const calls1 = extractFunctionCallsWithLineNumbers();	//  모든 함수 호출 부분 모은 것
 	console.log('콜스(소스내 모든 호출들)',calls1.length);	//// 'ham3();', 'ham4(a,b,c);' ham4(d,e,f)
