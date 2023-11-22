@@ -1,39 +1,34 @@
 // CONSOLE.LOG()... 축약
 const cl = (...args) => console.log(...args);
 
+let btnAddPointRoute;
+let blinkTimerId;	// 텍스트 영역의 깜빡임 상황 누적 기록용.
 
-/**
-함수들의 정의 라인 1줄씩 추출한다.
-결과 예: ["function moveCaret2(posArr) {"]
-*/
-/* function extractFunctionDefinitions() {
-  // Get the <textarea> element by its ID
-  const textarea = document.getElementById('code1');
 
-  if (textarea) {
-    // Split the content of the textarea into lines
-    const lines = textarea.value.split('\n');
 
-    // Regular expression to match function definitions
-    const functionRegex = /^(function\s+\w+\s*\(.+\)\s*{)/;
+// 초기 콘텐트 로드 후 버튼 등을 셋업해야 한다.
+document.addEventListener("DOMContentLoaded", function () {
+	const txtFind = document.querySelector('#txtFind');	
+	btnAddPointRoute = document.querySelector('#btnAddPointRoute');	
+	
+	btnTextFind.addEventListener('click', () => {
+		const txtFind = document.getElementById('txtFind');
+		const lstDef0 = document.getElementById('lstFuncDefinitions0');
+		
+		// console.log(txtFind.value, "를 찾겠다");
+		
+		if (lstDef0 == null || lstDef0 == undefined) {
+			console.error("리스트를 먼저 세팅하시요. Show 버튼 2개중 한개를 눌러서...");
+			return;
+		}
+		// console.log(lstDef0.id, "에서");
+		
+		// findKeywordInSelect(lstDef0, txtFind.value);
+		findKeywordInSelectAndSelect(lstDef0, txtFind.value);
+	});
+	
+});
 
-    const functionDefinitionLines = [];
-
-    // Loop through each line and check for function definitions
-    for (const line of lines) {
-      const match = line.match(functionRegex);
-      if (match) {
-        // Add the entire line to the functionDefinitionLines array
-        functionDefinitionLines.push(match[0]);
-      }
-    }
-
-    return functionDefinitionLines;
-  } else {
-    // Handle the case where the 'code1' element is not found
-    return null;
-  }
-} */
 
 /**
 함수들의 정의 라인 1줄씩 추출한다.
@@ -138,54 +133,6 @@ function extractListenerDefinitions() {
 }
 
 
-/**
-함수 호출 부만 찾아본다.
-RESULT:
-*/
-/* function extractFunctionCalls() {
-  // Get the <textarea> element by its ID
-  const textarea = document.getElementById('code1');
-
-  if (textarea) {
-    // Split the content of the textarea into lines
-    const lines = textarea.value.split('\n');
-
-    // Regular expression to match function calls
-    //const functionCallRegex = /(\w+)\s*\(/;
-	const define1 = /(function)\s+\w+\(/g;
-	const functionCallRegex = /\w+\s*\(.*\);/g;
-
-    const functionCalls = [];
-
-    // Loop through each line and check for function calls
-    for (const line of lines) {
-		// 함수 선언부는 제외.
-	  const match1 = line.match(define1);
-	  if (match1) {
-		  const functionName1 = match1[0];
-		  //console.log(functionName1, "제거");
-		  continue;	// function 정의면 더이상 체크안함
-	  }
-	  
-	  // 함수 호출부인지 체크
-      const match2 = line.match(functionCallRegex);
-      if (match2) {
-        // Extract the function name
-        const functionName = match2[0];
-		console.log("호출부분: ", match2[0]);
-
-        functionCalls.push(functionName);
-      }
-    }
-
-    return functionCalls;
-  } else {
-    // Handle the case where the 'code1' element is not found
-    return null;
-  }
-}
-
- */
  
 function extractFunctionCallsWithLineNumbers() {
   const textarea = document.getElementById('code1');
@@ -463,7 +410,7 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
   // 리스너만 다시 테스트해본다
   let defs00 = null;
   
-  if (defOrLis == 0)
+  if (defOrLis == 0) // 정의냐 리스너냐 판단.
 	defs00 = extractFuncDefinitions();	// 여기서 Html 콜 여부도 체크해야...
   else
     defs00 = extractListenerDefinitions();	// 여기서 Html 콜 여부도 체크해야...
@@ -476,9 +423,12 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 
   // Create a <select> element
   const selectElement = document.createElement('select');
-  selectElement.id = '함수 정의 목록 funcdeflist' + defOrLis;
+  //selectElement.id = '함수 정의 목록 funcdeflist' + defOrLis;
+  selectElement.id = 'lstFuncDefinitions' + defOrLis;
   selectElement.size = 9;
   selectElement.style.width = 'auto';
+  selectElement.classList.add('definia'); // 이 박스의 CSS클래스 정의해주기
+
 
   // Add an event listener to the select element for 항목 선택시...
   selectElement.addEventListener('change', function() {
@@ -630,7 +580,7 @@ function extractParameters(functionCallString) {
 
 
 // HTML CALL. 콜 버튼 클릭시.
-function showCallsOfProcedure(fname1) {	// !!HTML_call
+/* function showCallsOfProcedure(fname1) {	// !!HTML_call
 	const functionCalls = extractFunctionCalls();
 
 	// Check if function calls were found
@@ -647,7 +597,7 @@ function showCallsOfProcedure(fname1) {	// !!HTML_call
 	const params1 = extractParameters(functionCalls[1]);
 	console.log(params1, "parameters... :941:");
 	
-}
+} */
 
 window.addEventListener("keydown", (e) => {
   //const key = document.getElementById(e.key);
@@ -781,8 +731,9 @@ function findStringOccurrences(array, targetString) {
 
 /*
 To get the line number at the caret's position in a textarea, you can use the selectionStart property of the textarea. Here's a function that does that:
+실패했으므로 안 씀
 */
-function getCaretLineNumber(id1) {
+/* function getCaretLineNumber(id1) {
 	//const textarea = document.getElementById('code1');
 	const textarea = document.getElementById(id1);
 	
@@ -797,3 +748,133 @@ function getCaretLineNumber(id1) {
 	//cl(lineBreaksBeforeCaret, 'lineBreaksBeforeCaret');
 	return lineBreaksBeforeCaret;
 }
+ */
+ 
+// function findFunctionInList() {
+	// const select1 = document.getElementById('lstFuncDefinitions0');
+	
+	// return select1;
+// }
+
+// LISTBOX에서 찾은 뒤, 커서를 옮겨 선택까지 한다.
+function findKeywordInSelectAndSelect(selectTag, keyword) {
+  const selectedIndex = selectTag.selectedIndex;
+  // Get all options from the select tag
+  const options = selectTag.options;
+
+  // Loop through each option (선택된 항목의 다음부터 찾기 시작합니다.)
+  for (let i = selectedIndex + 1; i < options.length; i++) {
+    const option = options[i];
+    const optionText = option.text.toLowerCase();
+
+    // Check if the option text contains the keyword
+    if (optionText.includes(keyword.toLowerCase())) {
+      // If it does, select the option and scroll to it
+      option.selected = true;
+      selectTag.scrollIntoView({ behavior: 'smooth' });
+	  console.log("이 키워드를 찾음", optionText);
+      return option;
+    }
+
+    // Check if any substring of the option text matches the keyword
+    for (let j = 0; j < optionText.length; j++) {
+      const substring = optionText.substring(j, j + keyword.length);
+      if (substring === keyword.toLowerCase()) {
+        // If it does, select the option and scrollse to it
+        option.selected = true;
+        selectTag.scrollIntoView({ behavior: 'smooth' });
+        return option;
+      }
+    }
+  }
+
+  // If no option is found, return null
+  setTextFlashInDiv('verbose1', "더 이상 없음.❗ ");
+  console.log("NOT FOUND!~ ");
+  
+  return null;
+}
+
+/*
+키 이벤트를 처리합니다. HTML이 부름.
+*/
+function finderKeyPress(e) { // !!HTML_Call
+	// look for window.event in case event isn't passed in
+    e = e || window.event;
+    if (e.keyCode == 13) {
+        document.getElementById('btnTextFind').click();
+        return false;	// 성공이므로 일반적인 엔터키 이벤트를 처리하지 않음.
+    }
+    return true;	// 일반 엔터키 이벤트를 처리함.
+}
+
+/* 찾기만 하는 함수
+ function findKeywordInSelect(selectTag, keyword) {
+  // Get all options from the select tag
+  const options = selectTag.options;
+
+  // Loop through each option
+  for (let i = 0; i < options.length; i++) {
+    const option = options[i];
+    const optionText = option.text.toLowerCase();
+
+    // Check if the option text contains the keyword
+    if (optionText.includes(keyword.toLowerCase())) {
+      // If it does, return the option
+	  console.log("찾음1", optionText);
+      return option;
+    }
+  }
+
+  // If no option is found, return null
+  console.log("NOTFOUND! ");
+  return null;
+}
+ */
+/*
+이 함수의 작성 요청과 GPT설명
+https://postimg.cc/tZtGRxHg
+setTextFlashInDiv('verbose', "기존 배열 요소와 겹칩니다❗ ");
+*/
+
+
+function setTextFlashInDiv(divId, text) {
+  const targetDiv = document.getElementById(divId);
+
+  if (targetDiv) {
+    targetDiv.innerHTML = text;
+    targetDiv.style.animation = 'blink 1s linear infinite';
+
+    // Clear the timer outside the setTimeout callback
+    clearTimeout(blinkTimerId);
+
+    // Set a timer to stop blinking after 4 seconds
+    blinkTimerId = setTimeout(function() {
+      document.getElementById(divId).style.animation = 'none';
+    }, 4000);
+  } else {
+    console.error(`Div with ID '${divId}' not found.`);
+  }
+}
+
+
+/* 
+// function setTextFlashInDiv(divId, text) {	// Flash 함수
+  const targetDiv = document.getElementById(divId);
+  
+  // 깜빡임 기능이 새로 동작할 수 있도록 조정한다.
+  //document.getElementById(divId).style.animation = 'blink 1s linear infinite;';  
+
+  if (targetDiv) {
+    targetDiv.innerHTML = text;
+	targetDiv.style.animation = 'blink 1s linear infinite;';  
+    clearTimeout(blinkTimerId); // Clear the timer that is currently blinking the DIV
+	// 끄는 시간 지정.
+    blinkTimerId = setTimeout(function() {
+           document.getElementById(divId).style.animation = 'none';
+    }, 4000); // Set a timer to hide the DIV after 2 seconds
+  } else {
+    console.error(`Div with ID '${divId}' not found.`);
+  }
+}
+ */
