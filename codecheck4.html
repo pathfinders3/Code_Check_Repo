@@ -1,7 +1,7 @@
 <html>
 <head>
 <title>
-새롭게 코드첵 업데이트 (4)
+Code Checker [4]
 </title>
 
 <script src='cookie.js'>
@@ -17,20 +17,27 @@
 input {
   margin: 5px auto;
   font-size: 18px;
+  font-family: Tahoma, 'Malgun Gothic';
 }
 
 
-textarea { 
+#code1 { 
 	background-color: #121212;
 	color: #efefef;
   
 	font-size: 16px; 
-	font-family: 'Tahoma';/*, 'Malgun Gothic';*/
-    line-height: 1.5; /* You can adjust this value as needed */
-	/*text-wrap:unrestricted;*/
-	
-    white-space: pre-wrap;  /*Enable text wrap */	
+	font-family: 'Consolas';
+    line-height: 21px; 
+	height: 400px;
+	width:600px;
 }
+
+/*
+font-family: Tahoma, 'Malgun Gothic'
+
+<!-- text-wrap:unrestricted; -->
+    <!-- /*white-space: pre-wrap;  Enable text wrap */	 -->
+*/
 
 #code1 {
 	width:600px;
@@ -56,16 +63,25 @@ select {
 }
 
 #def1 {
-  display: inline-block;
-
+	display: inline-block;
+	margin: 5px;
+	border:1px dotted orange;  
 }
 
 #def2 {
 	display: inline-block;
-	background-color: #eeaa33;
+	background-color: #eebb99;
 	font-size: 16px;
 	max-width: 300px;
 	width: fit-content; /* or auto */
+	padding: 1px;
+}
+
+#horizon1 {
+	display: inline-block;
+	margin: 5px;
+	padding: 1px;
+	background-color: lightgray;
 }
 
 input[type="button" i] {
@@ -85,18 +101,9 @@ input[type="button" i] {
 }
 
 input[type="button" i]:hover {
-  opacity: .90;
+  background-color: #552;
 }
 
-button {
-  background-color: #222;
-  border-style: none;
-  color: #fff;
-}
-
-button:hover {
-	opacity: .80;
-}
 
 
 .btnGotoRemark, .btnGotoNormal {
@@ -118,7 +125,6 @@ button:hover {
   padding: 3px 5px; /* top-down and left-right */
   text-align: center;
   text-decoration: none;
-  /*transition: all .1s;*/
   touch-action: manipulation;
 
 }
@@ -128,9 +134,82 @@ button:hover {
   color: #777;
 }
 
+button {
+    align-items: center;
+    background-color: #444;
+    border: 1px solid #000;
+    border-radius: 4px;
+    color: #fff;
+    fill: #000;
+    font-family: Tahoma;
+    font-size: 16px;
+    font-weight: 400;
+    min-width: 40px;
+	min-height: 25px;
+    width: auto;
+    outline: 0;
+    padding: 5px 5px;
+    text-align: center;
+    text-decoration: none;
+}
+button:hover {
+  background-color: #552;
+}
+
+/*함수정의 찾기부/보여주기부는 배경색 일치해야. 현 색은 Moccasin */
+.definia {
+	background-color: #3B0000;
+	color: #ee0;
+}
+
+/* 깜빡임 DIV 표시 영역: 알림 영역. */
+.alarm1 {
+	background-color: #552;
+	color: #fff;
+  /*animation: blink 1s linear infinite; 애니메이션은 텍스트 세팅 함수에서 매번 세팅한다 */
+}
+
+.alarm2 {
+    align-items: center;
+    background-color: #444;
+    border: 1px dotted #010;
+    border-radius: 4px;
+    color: #fff;
+    fill: #000;
+    font-family: Verdana;
+    font-size: 16px;
+    font-weight: 400;
+    min-width: 40px;
+	min-height: 15px;
+    width: 301px;
+    outline: 0;
+    padding: 5px 5px;
+	margin: 3px;
+    text-decoration: none;
+}
+
+.alarm2:hover {
+	background-color: #222;
+}
+
+@keyframes blink {
+  0% {    opacity: 1;  }
+  50% {    opacity: 0;  }  
+  100% {    opacity: 1;  }
+}
 
 </style>
 
+<!-- button {
+  background-color: #222;
+  border-style: none;
+  color: #fff;
+}
+
+button:hover {
+	background-color: #552;
+}
+ -->
 <script>
 // 전역 선언
 var gFuncName1 = 'None Function yet';
@@ -144,41 +223,24 @@ var gFuncName1 = 'None Function yet';
 
 <div> <img src="codecheck4.png" height=50px> <img src="number2.png" height=50px> Code Check 2 (June 2022~) </div>
 
-<div><input id="caretpos" type="text" size=1 value="." onclick="this.focus(); this.select();"> <input id="letindex" type="text" size=11 value="delim1" onclick="this.focus(); this.select();"></div>
+<div>
+<input id="caretpos" type="text" size=1 value="." onclick="this.focus(); this.select();"> <!-- <input id="letindex" type="text" size=11 value="delim1" onclick="this.focus(); this.select();"> -->
+<input id="txtFind" class='definia' type="text" size=11 value="foo" onclick="this.focus(); this.select();" onkeypress="return finderKeyPress(event);">
+<!-- <input type=button onclick="findFunctionInList();" value="📞 함수 찾기" title="리스트 박스에서 찾는다(findFunctionInList)"> -->
 
-<div> <input id="goto_line" type="text" size=11 value="-1" onclick="this.focus(); this.select();" placeholder="Goto Line"><input type="button" onclick="gotoLine();" value="Go to Line" title="라인으로 간다">
+<button id="btnTextFind">함수 찾기</button>
+
+
+<input id="goto_line" type="text" size=9 value="-1" onclick="this.focus(); this.select();" placeholder="Goto Line"><input type="button" onclick="gotoLine();" value="Go to Line" title="라인으로 간다">
 </div>
 
 
-
-<!-- <div> 
-<label id='counter1'> Never Launched Yet. </label>
-<label id='counter2' class='counters'> variable name </label>
-<span class='counter_title'>Val</span> <label id='counter3' class='counters'> variable type/value </label>
-
-
-</div> -->
+<div id='prevFoo' class='alarm2'>
+Prev Foo
+</div>
 
 <textarea id='code1' rows=20 cols=60>
 { abc } 
-내부에서만 찾는 루틴 추가  cocos
-
-let a;
-let b = 3;
-
-Lv1 = [ [1,3], [8, 10], [15, 17], ...];
-Lv2 = [ [5,13] ];
-
-
-function hams1(fa1,fab2) { // !!HTML_call
-  regLetBig.lastIndex = 0;
-  regLetSol.lastIndex = 0;
-}
-
-function hams2(txt1) {
-  regLetBig.lastIndex = 0;
-  regLetSol.lastIndex = 0;
-}
 
 ham3();
 ham4(a,b,c);
@@ -195,16 +257,16 @@ foo1(10,11);
 foo1(14,15);
 foo1();
 
-커서는 Lv1, Lv2 속함
-}
-2개를 다 잡는데 왜 그러는 건지
-배열내 1 인덱스서 exit 하는 듯 하다.
 
-커서 위치에서 let a 가 유효함을 앎
-}
+btnMakeGrid.addEventListener('click', () => {
 
 </textarea>
 
+
+
+<div id='nextFoo' class='alarm2'>
+Next Foo
+</div>
 
 <label>
 Click 2 Highlight<br>
@@ -216,27 +278,35 @@ Parameter List<br>
 
 </div>
 
+
+<div id='verbose1' class='alarm1'>
+Alarm1 Area<br>
+
+</div>
+
+
+
+
 <div>
 <!-- <input type=button onclick="runRegBigs();" value="Store lets to Listbox" title="JS:runRegBigs - runRegex();"> -->
 
-<input type=button onclick="generateSelectOptions();" value="📰Show 함수선언들" title="JS:resetRegs();">
+<input type=button onclick="generateSelectOptions(0);" value="📰Show! 함수선언들" title="JS:();">
+
+<input type=button onclick="generateSelectOptions(1);" value="📰Show! 이벤트 반응함수" title="JS:();">
+
+
 
 <span class='counter_title'>
 
 
 
-<input type=button onclick="showCallsOfProcedure();" value="📞 Show Calls" title="함수호출문들을 보여준다">
 
-
-<input type=button onclick="showCallsOfProcedure();" value="📞 하이라이트 단어 문법 분석" title="함수호출 옳은지 분석">
-
-<input type=button onclick="showCallsOfProcedure();" value="📞 리팩터?는 불필요?" title="함수호출 옳은지 분석">
-
+<button id="ddd" class="fafa">📞리팩터?</button>
 
 
 </div>
 
-<label for="함수 정의 목록 funcdeflist">funcDefList</label><br>
+<label for="lstFuncDefinitions">funcDefList</label><br>
 <div id='def1'>
 <!-- <label for="함수 정의 목록 funcdeflist">funcDefList</label> -->
 
@@ -248,20 +318,18 @@ Parameter List<br>
 <br>
 
 
-
-
-
-
-
-Create arrCurl123 🡺 Caret's Array&Let
-
 <!-- onkeydown -->
 
+<div id='horizon1'>
 
-<input type=button onclick="WriteCookies()" value="Write Cookie">
-<input type=button onclick="ReadCookies()" value="Read Cookie">
+<input type=button onclick="WriteLocalStorage()" value="Write LocalStorage">
+<input type=button onclick="ReadLocalStorage()" value="Read LocalStorage">
+<input type=button onclick="removeItemFromLocalStorage()" value="Delete LocalStorage">
 
-<textarea id='code2' rows=20 cols=60></textarea>
+</div>
+
+
+<!-- <textarea id='code2' rows=3 cols=60>a</textarea> -->
 
 
 
