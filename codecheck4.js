@@ -133,7 +133,7 @@ function extractListenerDefinitions() {
 }
 
 
- 
+// 정의부가 아닌, 그 함수를 부르는 호출문들을 모아 리턴한다. 
 function extractFunctionCallsWithLineNumbers() {
   const textarea = document.getElementById('code1');
 
@@ -175,25 +175,6 @@ function extractFunctionCallsWithLineNumbers() {
 //console.log(functionCallsInfo);
 
 
-
-// !!reg.exec[1]!!
-// to reset for .exec call
-/**
- * 함수 선언문들 찾기
- textarea 'code1'에서...
- */
-/* function showFuncDefs() {
-	const ret = extractFunctionNamesAndParameters();
-	
-	ret.forEach(item => {
-	  console.log(`Function Name: ${item.functionName}`);
-	  console.log('Parameters:');
-	  item.parameters.forEach(param => {
-		console.log(`  - ${param}`);
-	  });
-	  console.log('---');
-	});	
-} */
 
 
 // 선택 안되는 것을 억지로 선택되게 하기 위한 또다른 함수.
@@ -292,6 +273,23 @@ function gotoLine2(line1) {
 	// 라인에 하이라이트 준다
 	selectLine('code1', line1);	
 }
+
+// 현재 커서가 위치한 곳의 줄번호 표시
+function getCaretLineNumber(textarea) {
+  let caretPosition = textarea.selectionStart;
+  let lineNumber = 1;
+  let lineText = textarea.value.slice(0, caretPosition);
+  let lineBreaks = lineText.match(/\n/g);
+
+  if (lineBreaks) {
+    lineNumber += lineBreaks.length;
+  }
+
+  setGotoLine(lineNumber);
+  
+  return lineNumber;
+}
+
 
 // 기존 GOTO 버튼들을 클리어 삭제 한다.
 function resetGoButtons() {
@@ -404,7 +402,86 @@ function removeSelectTags(divTag) {
     selectTag.parentNode.removeChild(selectTag);
   }
 }
- 
+
+// 예, 다음은 select 요소에서 특정 옵션의 다음 옵션을 찾는 JavaScript 함수입니다.
+function getNextOption(selectElement, currentIndex) {
+  let options = selectElement.options;
+  let nextIndex = currentIndex + 1;
+
+  if (nextIndex < options.length) {
+    return options[nextIndex];
+  } else {
+    return null;
+  }
+}
+
+
+// 현 커서 위치에서 뒤로간 함수 선언문의 위치 (즉, 대부분은 커서가 속한 함수 위치)
+function getNearBackFunction(datasetProperties, curLine) {
+	if (!(datasetProperties instanceof Array)) {
+	throw new Error('Invalid datasetProperties provided');
+	}
+	// 뒤에서부터 거꾸로 찾는다. 현재 줄보다 작은 줄번호가 첫번째로 나오면, 바로 리턴한다.
+	let matchingKey = null;
+	for (let i = datasetProperties.length - 1; i >= 0; i--) {
+	  if (Number(datasetProperties[i].value) < curLine) {
+		matchingKey = datasetProperties[i].key;
+		break;
+	  }
+	}
+
+	return matchingKey;	// key is actually a Line Number.
+
+}
+// returns the first key which value is greater than the given curLine(value)
+function getNearForthFunction(datasetProperties, curLine) {
+//function getKeyByValue(datasetProperties, value) {
+  if (!(datasetProperties instanceof Array)) {
+    throw new Error('Invalid datasetProperties provided');
+  }
+  // Find the 첫번째 key that matches the given curLine
+  const matchingKey = datasetProperties.find((property) => Number(property.value) > curLine)?.key;
+
+  return matchingKey;	// key is actually a Line Number.
+}
+
+
+
+// SELECT 박스에서 OPTION 항목의 요소를 구해 배열을 반환한다.
+// SELECT 리스트 박스에서, data-is-remark 와 같은 추가적 엑스트라 데이터 목록을 구한다.
+// 리턴값 그림: https://postimg.cc/4mf1XWvn
+function getDatasetProperties(options, property) {
+  // Check if options is an array
+  if (!Array.isArray(options)) {
+    throw new Error('Invalid options provided');
+  }
+
+  // Create an empty array to store the dataset properties
+  const datasetProperties = [];
+
+  // Iterate over all options
+  for (const option of options) {
+    // Check if the option has dataset properties
+    if (option.dataset) {
+
+      // Check if the property exists if provided
+      if (property && !(property in option.dataset)) {
+		  console.error(option.dataset, "안에 없읍니다: property 이름 틀렸을 것");
+		  continue;
+	  }
+
+      // Add the dataset property to the array
+	  // {함수명, 줄번호}의 배열을 리턴.
+	  datasetProperties.push({ key:option.value, value:option.dataset[property] });
+	  //datasetProperties.push({ linenum:option.value, value: });
+    }
+  }
+
+  return datasetProperties;
+}
+
+
+
 
 function generateSelectOptions(defOrLis) { // !!HTML_call
   // 리스너만 다시 테스트해본다
@@ -466,19 +543,26 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	// 함수 정의 리스트 박스에서 선택할 때마다 불리우므로, 각 인덱스마다 반복시엔 마지막 인덱스에 대한 함수 정보만 남게 된다.[이것이 문제. 계속 삭제(RESET)하게 됨]
 	if (Array.isArray(indices1)) {
 	  indices1.forEach(index => {
-		//console.log(calls1[index]);
-
 		const params1 = extractParameters(calls1[index]);
-		const param_count = params1.length;		
+		const param_count = params1.length;	// 파라메터 개수만 버튼에 넣을 것이므로...
 		// 버튼에 맡기고 아래 정보는 표시하지 않는다. 길어지므로...
-		//setTextInDiv('params1', calls1[index].functionName); //  함수 콜 하나씩 리스트한다
-		//setTextInDiv('params1', calls1[index].lineNumber); //  함수 콜의 해당줄번호도 인쇄
+		//setTextInDiv('params1', calls1[index].functionName); // div에, 함수 콜 하나씩 리스트한다
 		//setTextInDiv('params1', params1); // 파라메터만 보여 주느냐
 		
 		// @@ 주석포함 선언부일 수도 있다. 버튼에 흐린 글씨체로 넣어줄 수도 있다.
 
 		// def2에 버튼도 만들어준다. @@ 에러가 안나는 이유?REMARK?에서?
 	    add_GoButton(calls1[index].lineNumber, calls1[index].functionName, calls1[index].lineNumber, calls1[index].isRemark, param_count);
+		
+		// 다음 옵션 항목에서, GoButton의 줄번호를 준다.
+		const nextOption1 = getNextOption(this, this.selectedIndex);
+		
+		// 그래서 NEXT OPTION 함수는 아래처럼 줄번호로 검색이 안된다. 줄번호가 아니라 인덱스를 받으니까. 줄번호 받도록 변경해야 함.
+		//const nextOption1 = getNextOption(this, calls1[index].lineNumber);
+		
+		//const prevOption1 = getNextOption(this, selectedOption);
+		//cl(nextOption1.dataset.lineNum, "이 이줄 다음으로 나오는 다음 함수의 줄번호");
+		cl(nextOption1.value, "이 이줄 다음으로 나오는 다음 함수의 이름");
 		
 		// 입력 박스에 줄 번호를 넣어준다. 추후 외부 에디터로 사용 위함.
 		//setGotoLine(calls1[index].lineNumber);
@@ -579,32 +663,38 @@ function extractParameters(functionCallString) {
 // console.log(parameters);
 
 
-// HTML CALL. 콜 버튼 클릭시.
-/* function showCallsOfProcedure(fname1) {	// !!HTML_call
-	const functionCalls = extractFunctionCalls();
-
-	// Check if function calls were found
-	if (functionCalls && functionCalls.length > 0) {
-	  console.log('Calls:');
-	  console.log(functionCalls.join(', '));
-	} else {
-	  console.log('No function calls found or textarea not found.');
-	}	
-	
-	console.log(functionCalls[0]);
-	console.log(":938",functionCalls[1]);
-	//showFuncParams('hams2');
-	const params1 = extractParameters(functionCalls[1]);
-	console.log(params1, "parameters... :941:");
-	
-} */
-
 window.addEventListener("keydown", (e) => {
-  //const key = document.getElementById(e.key);
-  if (e.key === "F2") {
-    alert("reset regs");
-    resetRegs();
-  }
+
+	if (e.key === "F2") {
+		// 어느 줄인지 표시.
+		const textarea1 = document.getElementById('code1');	  
+		const currentLine = getCaretLineNumber(textarea1);
+		// 밑 함수 이름 표시.
+		const selectElement0 = document.getElementById('lstFuncDefinitions0');
+		const selectElement1 = document.getElementById('lstFuncDefinitions1');
+		let selectChosen = null;
+		
+		if (null != selectElement0) {
+			selectChosen = selectElement0;
+		} else if (null != selectElement1) {
+			selectChosen = selectElement1;
+		} else {	// 둘다 NULL이다
+			setTextFlashInDiv('verbose1', "SELECT-0,1 둘다 리스트 박스 없음. => Prev/Next 함수 찾기 불가능");
+		}
+		
+		const optionsArray = Array.from(selectChosen.options);
+		const datasetProperties = getDatasetProperties(optionsArray, 'lineNum');
+		const nextFooLine = getNearForthFunction(datasetProperties, currentLine);
+		const backFooLine = getNearBackFunction(datasetProperties, currentLine);
+		
+		resetTextInDiv('prevFoo');
+		resetTextInDiv('nextFoo');
+		setTextInDiv('prevFoo', backFooLine);
+		setTextInDiv('nextFoo', nextFooLine);
+		
+		// console.log(backFooLine, "이 현재(또는 이전) 함수");
+		// console.log(nextFooLine, "이 다음 함수");
+	}
   
 });
 
@@ -788,9 +878,10 @@ function findKeywordInSelectAndSelect(selectTag, keyword) {
     }
   }
 
-  // If no option is found, return null
+  // If no option is found, return null, 처음으로도 옮긴다.
   setTextFlashInDiv('verbose1', "더 이상 없음.❗ ");
-  console.log("NOT FOUND!~ ");
+  options[0].selected = true;
+  selectTag.scrollIntoView({ behavior: 'smooth' });
   
   return null;
 }
@@ -878,3 +969,27 @@ function setTextFlashInDiv(divId, text) {
   }
 }
  */
+
+// 로컬 스토리지 수동으로 지우는 법 화면. https://postimg.cc/8sMqqsP4
+function WriteLocalStorage() {
+	let textarea = document.getElementById('code1');
+	let cookieContent = textarea.value;
+	// Store data in localStorage
+	localStorage.setItem('code11', cookieContent);
+}
+
+function ReadLocalStorage() {
+	let textarea = document.getElementById('code1');
+	let storedData = localStorage.getItem('code11');
+	textarea.value = storedData;
+}
+
+// 버튼으로 삭제하기
+function removeItemFromLocalStorage(key = null) {
+	if (null == key) {
+		key = 'code11';
+	}
+	localStorage.removeItem(key);
+}
+
+	
