@@ -426,23 +426,36 @@ function getNearBackFunction(datasetProperties, curLine) {
 	for (let i = datasetProperties.length - 1; i >= 0; i--) {
 	  if (Number(datasetProperties[i].value) < curLine) {
 		matchingKey = datasetProperties[i].key;
-		break;
+		const matchingLineNumber = Number(datasetProperties[i].value);		
+		return { key: matchingKey, index: i, lineNumber: matchingLineNumber };	
+		// break;
 	  }
 	}
-
-	return matchingKey;	// key is actually a Line Number.
-
+	//return matchingKey;	// key is actually a Line Number.
 }
+
 // returns the first key which value is greater than the given curLine(value)
+// datasetProperties: 'lineNum' 이라는 키값으로 구해놓은 집합을 인수로 주는 것.
 function getNearForthFunction(datasetProperties, curLine) {
 //function getKeyByValue(datasetProperties, value) {
   if (!(datasetProperties instanceof Array)) {
     throw new Error('Invalid datasetProperties provided');
   }
   // Find the 첫번째 key that matches the given curLine
-  const matchingKey = datasetProperties.find((property) => Number(property.value) > curLine)?.key;
+  // const matchingKey = datasetProperties.find((property) => Number(property.value) > curLine)?.key;
 
-  return matchingKey;	// key is actually a Line Number.
+  const matchingIndex = datasetProperties.findIndex((property) => Number(property.value) > curLine);
+  
+  if (matchingIndex !== -1) {	// 맞은 'lineNum'이 있으면 리턴한다
+    const matchingKey = datasetProperties[matchingIndex].key;
+	const matchingLineNumber = Number(datasetProperties[matchingIndex].value);
+
+    return { key: matchingKey, index: matchingIndex, lineNumber: matchingLineNumber };
+    //return matchingKey;	// key is actually a Line Number.
+  } else {
+    return null; // Or any other indication that no matching item was found
+  }  
+
 }
 
 
@@ -527,7 +540,6 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	setTextInDiv('params1', lineNum + "줄번"); 
 	setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
 	
-	//scrollToLineNumber('code1', lineNum-10); // LISTENER 목록에선, 이게 필요:바로 스크롤 한다.
 	gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
 	
 	const calls1 = extractFunctionCallsWithLineNumbers();	//  모든 함수 호출 부분 모은 것
@@ -553,19 +565,6 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 
 		// def2에 버튼도 만들어준다. @@ 에러가 안나는 이유?REMARK?에서?
 	    add_GoButton(calls1[index].lineNumber, calls1[index].functionName, calls1[index].lineNumber, calls1[index].isRemark, param_count);
-		
-		// 다음 옵션 항목에서, GoButton의 줄번호를 준다.
-		const nextOption1 = getNextOption(this, this.selectedIndex);
-		
-		// 그래서 NEXT OPTION 함수는 아래처럼 줄번호로 검색이 안된다. 줄번호가 아니라 인덱스를 받으니까. 줄번호 받도록 변경해야 함.
-		//const nextOption1 = getNextOption(this, calls1[index].lineNumber);
-		
-		//const prevOption1 = getNextOption(this, selectedOption);
-		//cl(nextOption1.dataset.lineNum, "이 이줄 다음으로 나오는 다음 함수의 줄번호");
-		cl(nextOption1.value, "이 이줄 다음으로 나오는 다음 함수의 이름");
-		
-		// 입력 박스에 줄 번호를 넣어준다. 추후 외부 에디터로 사용 위함.
-		//setGotoLine(calls1[index].lineNumber);
 
 	  });
 	} else {
@@ -590,8 +589,34 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	}	
 	
 	
-  });
+  });	// end of 리스너 'change'--------------
 
+	selectElement.addEventListener('click', function() {
+		// 'change' 이벤트에서 GOTO만 적용함. (재 선택시 GOTO 하기 위함)
+		
+		// 선택된 항목 없을 경우, 아무것도 하지 않음.
+		if (-1 == this.selectedIndex) 
+			return;
+		
+		const selectedOption = this.options[this.selectedIndex];
+		//console.log(`Selected option: ${selectedOption.value}`);
+		const gFuncName1 = selectedOption.value;
+		
+		showFuncParams(gFuncName1);
+
+		// ** 대표 정의문에 대한 정보는 아래 블럭에 모은다	
+		// let isHtmlCall = selectedOption.dataset.isHtmlCall;
+		// isHtmlCall = (isHtmlCall === "true");	// boolean 식으로 바꾼다.
+		// let isRemark = selectedOption.dataset.isRemark;
+		// isRemark = (isRemark === "true");	// boolean 식으로 바꾼다.	
+		const lineNum = selectedOption.dataset.lineNum;
+		
+		setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
+		
+		gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
+		
+	});
+	
   // Iterate through each function
   defs00.forEach(item => {
     // Create an <option> element for each function
@@ -684,16 +709,14 @@ window.addEventListener("keydown", (e) => {
 		
 		const optionsArray = Array.from(selectChosen.options);
 		const datasetProperties = getDatasetProperties(optionsArray, 'lineNum');
-		const nextFooLine = getNearForthFunction(datasetProperties, currentLine);
-		const backFooLine = getNearBackFunction(datasetProperties, currentLine);
+		const nextFoo3 = getNearForthFunction(datasetProperties, currentLine);
+		const backFoo3 = getNearBackFunction(datasetProperties, currentLine);
 		
 		resetTextInDiv('prevFoo');
 		resetTextInDiv('nextFoo');
-		setTextInDiv('prevFoo', backFooLine);
-		setTextInDiv('nextFoo', nextFooLine);
-		
-		// console.log(backFooLine, "이 현재(또는 이전) 함수");
-		// console.log(nextFooLine, "이 다음 함수");
+		setTextInDiv('prevFoo', backFoo3.key + ": " + backFoo3.lineNumber);
+		setTextInDiv('nextFoo', nextFoo3.key + ": " + nextFoo3.lineNumber);
+		// nextFoo 의 리턴값이 3종임을 나중에 어떻게 기억하는가?
 	}
   
 });
@@ -927,8 +950,6 @@ function finderKeyPress(e) { // !!HTML_Call
 https://postimg.cc/tZtGRxHg
 setTextFlashInDiv('verbose', "기존 배열 요소와 겹칩니다❗ ");
 */
-
-
 function setTextFlashInDiv(divId, text) {
   const targetDiv = document.getElementById(divId);
 
@@ -949,26 +970,6 @@ function setTextFlashInDiv(divId, text) {
 }
 
 
-/* 
-// function setTextFlashInDiv(divId, text) {	// Flash 함수
-  const targetDiv = document.getElementById(divId);
-  
-  // 깜빡임 기능이 새로 동작할 수 있도록 조정한다.
-  //document.getElementById(divId).style.animation = 'blink 1s linear infinite;';  
-
-  if (targetDiv) {
-    targetDiv.innerHTML = text;
-	targetDiv.style.animation = 'blink 1s linear infinite;';  
-    clearTimeout(blinkTimerId); // Clear the timer that is currently blinking the DIV
-	// 끄는 시간 지정.
-    blinkTimerId = setTimeout(function() {
-           document.getElementById(divId).style.animation = 'none';
-    }, 4000); // Set a timer to hide the DIV after 2 seconds
-  } else {
-    console.error(`Div with ID '${divId}' not found.`);
-  }
-}
- */
 
 // 로컬 스토리지 수동으로 지우는 법 화면. https://postimg.cc/8sMqqsP4
 function WriteLocalStorage() {
