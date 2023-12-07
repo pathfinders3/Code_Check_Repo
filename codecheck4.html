@@ -30,6 +30,7 @@ input {
     line-height: 21px; 
 	height: 400px;
 	width:600px;
+	tab-size:2;
 }
 
 /*
@@ -77,6 +78,16 @@ select {
 	padding: 1px;
 }
 
+#def3 { /* 리턴 값 나열 버튼들의 스타일 */
+	display: inline-block;
+	background-color: #9A7D0A;
+	font-size: 16px;
+	max-width: 300px;
+	width: fit-content; /* or auto */
+	padding: 1px;
+	border-radius: 4px;
+}
+
 #horizon1 {
 	display: inline-block;
 	margin: 5px;
@@ -105,7 +116,7 @@ input[type="button" i]:hover {
 }
 
 
-
+/*
 .btnGotoRemark, .btnGotoNormal {
   align-items: center;
   background-color: #222;
@@ -126,13 +137,9 @@ input[type="button" i]:hover {
   text-align: center;
   text-decoration: none;
   touch-action: manipulation;
+// NOT - USED
+}*/
 
-}
-
-.btnGotoRemark {
-  background-color: #222;
-  color: #777;
-}
 
 button {
     align-items: center;
@@ -155,6 +162,47 @@ button {
 button:hover {
   background-color: #552;
 }
+
+.btnCalling {
+	background-color: #f0c941; /* FFF8DC; corn silk*/
+	color: #101010; 
+	border-radius:3px;
+	border:1px solid #704901;
+	font-family: 'Trebuchet MS', sans-serif;
+	font-size:15px;
+	font-weight: 600;
+}
+.btnCalling:hover {
+	background-color:#a06b12;
+}
+
+.btnGotoRemark {
+  background-color: #222;
+  color: #404040;
+}
+.btnGotoRemark:hover {
+	background-color:#302b02;
+}
+
+
+
+.btnReturn {
+	background-color:#f0a911;
+	border-radius:3px;
+	border:1px solid #904901;
+	color:#303030;
+	font-family: 'Trebuchet MS', sans-serif;
+	font-size:15px;
+	font-weight: 600;
+	
+	/*
+	padding:6px 24px;
+	text-decoration:none;*/
+}
+.btnReturn:hover {
+	background-color:#d05b12;
+}
+
 
 /*함수정의 찾기부/보여주기부는 배경색 일치해야. 현 색은 Moccasin */
 .definia {
@@ -181,7 +229,7 @@ button:hover {
     font-weight: 400;
     min-width: 40px;
 	min-height: 15px;
-    width: 301px;
+    width: 401px;
     outline: 0;
     padding: 5px 5px;
 	margin: 3px;
@@ -189,7 +237,7 @@ button:hover {
 }
 
 .alarm2:hover {
-	background-color: #222;
+	/*background-color: #222;*/
 }
 
 @keyframes blink {
@@ -291,7 +339,6 @@ Alarm1 Area<br>
 <!-- <input type=button onclick="runRegBigs();" value="Store lets to Listbox" title="JS:runRegBigs - runRegex();"> -->
 
 <input type=button onclick="generateSelectOptions(0);" value="📰Show! 함수선언들" title="JS:();">
-
 <input type=button onclick="generateSelectOptions(1);" value="📰Show! 이벤트 반응함수" title="JS:();">
 
 
@@ -299,21 +346,22 @@ Alarm1 Area<br>
 <span class='counter_title'>
 
 
-
-
-<button id="ddd" class="fafa">📞리팩터?</button>
-
-
 </div>
 
-<label for="lstFuncDefinitions">funcDefList</label><br>
+<label for="lstFuncDefinitions">Func Definitions</label><br> <!-- funcDefList -->
 <div id='def1'>
 <!-- <label for="함수 정의 목록 funcdeflist">funcDefList</label> -->
 
 </div>
 
 <div id='def2'>
+<div>☎ ____ </div> <!-- Calls -->
 </div>
+
+<div id='def3'>
+<div>♺ ____</div> <!-- Returns -->
+</div>
+
 
 <br>
 
