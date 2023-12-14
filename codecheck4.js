@@ -86,6 +86,20 @@ function extractFuncDefinitions() {
   }
 }
 
+// 리스너 시작 라인에서 명칭을 추출 리턴한다.
+// e.g. 'D.O.M.Content-Loaded'
+function getListenerString(line1) {
+	const regListener = /(.+)\.addEventListener\(['"](.+)['"],\s+[f\(]/;
+	
+	const match = line1.match(regListener);
+	if (match) {
+		// cl(match[1], "리스너 문자열 2개");
+		return match[1] + ":" + match[2];
+	}
+	
+	return null;	// NOT MATCH.
+}
+
 // 리스너의 정의만 모아서 리턴해본다
 function extractListenerDefinitions() {
   // Get the <textarea> element by its ID
@@ -238,17 +252,6 @@ function scrollToLineNumber(textareaId, lineNumber) {
   textarea.scrollTop = scrollToOffset;
 }
 
-/* function scrollToLineNumber(textareaId, lineNumber) {
-  // textarea 요소를 가져옵니다.
-  const textarea = document.getElementById(textareaId);
-
-  // 지정된 줄의 위치를 가져옵니다.
-  const lineNumberOffset = lineNumber * textarea.lineHeight;
-
-  // textarea의 스크롤 위치를 지정된 위치로 설정합니다.
-  textarea.scrollTop = lineNumberOffset;
-} */
-
 
 
 // HTML Listen 인풋 박스에 쓴 그 줄로 간다.
@@ -257,6 +260,36 @@ function gotoLine() {	// !!HTML_call
 	const line1 = parseInt(txtLine.value);
 
 	scrollToLineNumber('code1', line1);
+}
+
+// 버튼에 달린 메타데이터값에 라인을 지정후, 그 라인을 읽어서 이동한다.
+// function gotoLine_ByMeta() {
+	// const button = document.getElementById("btnPrevFoo");
+	// const lineNum1 = button.dataset.lineNum;
+	// cl("메타 라인넘은 ", lineNum1);
+	// gotoLine2(lineNum1);
+// }
+
+// 준 ID1에 해당하는 버튼에 달린 메타데이터에 지정된 줄로 이동한다. 
+function gotoLine_ByMeta2(id1) {
+	const button = document.getElementById(id1);
+	//const button = document.getElementById("btnNextFoo");
+	const lineNum1 = button.dataset.lineNum;
+	cl("메타 라인넘은 ", lineNum1);
+	gotoLine2(lineNum1);
+}
+
+
+// PREV Bar 가 표시한 라인 넘버를 버튼에 배정.
+function setMeta_Prev(lnum) {
+	const button = document.getElementById("btnPrevFoo");
+	button.dataset.lineNum = lnum;
+}
+
+// NEXT Bar (DIV) 가 표시한 라인 넘버를 버튼에 배정.
+function setMeta_Next(lnum) {
+	const button = document.getElementById("btnNextFoo");
+	button.dataset.lineNum = lnum;
 }
 
 // 인풋 박스에 라인 줄 번호를 써 준다
@@ -532,7 +565,6 @@ function getRawBackLambda(textarea, startLine) {
     const regAnony = /(.+)function +\(\)/;
     const regArrow = /\(\) +=> +{/; // /() => {/;
 
-    //for (let i = startLine-1; i < lines.length; i++) {
     for (let i=startLine-1; i >=0; i--) {
         const line = lines[i];
         
@@ -543,12 +575,14 @@ function getRawBackLambda(textarea, startLine) {
         if (isAnony) {
         	// console.log('익명', isAnony[1]);
 			ret = i+1;
-			return { lineNum:ret, parameters:['anon'], functionName:line };
+			const concise1 = getListenerString(line);
+			return { lineNum:ret, parameters:['anon'], functionName:concise1 };
         } else if (isArrow) {
         	//console.log('ARROW 17', line);
 			//ret.push({ ln:i+1, st:isArrow[1] });
 			ret = i+1;
-			return { lineNum:ret, parameters:['arro'], functionName:line };
+			const concise1 = getListenerString(line);
+			return { lineNum:ret, parameters:['arro'], functionName:concise1 };
         }
     }
 
@@ -1122,7 +1156,7 @@ window.addEventListener("keydown", (e) => {
 		// console.log("현 라인-B1", lineGefunc);
 		
 		const backNumber = (lineLambda > lineGefunc) ? lineLambda : lineGefunc; // 더 아래(최근)인 줄번호를 가져온다.
-		const backNumberSt = (lineLambda > lineGefunc) ? lineLambda+" "+backLam4.functionName : lineGefunc+"(Foo)";
+		const backNumberSt = (lineLambda > lineGefunc) ? lineLambda+" "+backLam4.functionName : lineGefunc+" "+backFoo4.functionName;
 		
 		//"(lambda or anonymous)" : lineGefunc + "(Foo)";
 		const nextFoo4 = getRawForthFunction(textarea1, backNumber);  	// 함수 끝줄
@@ -1134,42 +1168,9 @@ window.addEventListener("keydown", (e) => {
 		
 		setTextInDiv('prevFoo', backNumberSt);
 		setTextInDiv('nextFoo', nextFoo4);	// 끝지점이지만 다음 함수 위치 넣어주는 게 좋음
-		
-		// 어느 줄인지 표시.
-		/*
-		const textarea1 = document.getElementById('code1');	  
-		const currentLine = getCaretLineNumber(textarea1);
-		// 밑 함수 이름 표시.
-		const selectElement0 = document.getElementById('lstFuncDefinitions0');
-		const selectElement1 = document.getElementById('lstFuncDefinitions1');
-		let selectChosen = null;
-		
-		if (null != selectElement0) {
-			selectChosen = selectElement0;
-		} else if (null != selectElement1) {
-			selectChosen = selectElement1;
-		} else {	// 둘다 NULL이다
-			setTextFlashInDiv('verbose1', "SELECT-0,1 둘다 리스트 박스 없음. => Prev/Next 함수 찾기 불가능");
-		}
-		
-		const optionsArray = Array.from(selectChosen.options);
-		const datasetProperties = getDatasetProperties(optionsArray, 'lineNum');
-		const nextFoo3 = getNearForthFunction(datasetProperties, currentLine);
-		const backFoo3 = getNearBackFunction(datasetProperties, currentLine);
-		
-		const nextLine = (nextFoo3 == null) ? -999 : nextFoo3.lineNumber;
-		resetTextInDiv('prevFoo');
-		resetTextInDiv('nextFoo');
-		
-		setTextInDiv('prevFoo', backFoo3.key + ": " + backFoo3.lineNumber);
-		if (nextFoo3 == null) {
-			setTextInDiv('nextFoo', "EOF!");
-		} else {
-			setTextInDiv('nextFoo', nextFoo3.key + ": " + nextLine);
-		}
-		*/
-		
-		// nextFoo 의 리턴값이 3종임을 나중에 어떻게 기억하는가?
+
+		setMeta_Prev(backNumber);
+		setMeta_Next(nextFoo4);
 	} else if (e.key === "F4") {	// F4는 변수를 추적해 정보를 알려준다.
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1);
