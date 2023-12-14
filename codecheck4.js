@@ -290,6 +290,61 @@ function getCaretLineNumber(textarea) {
   return lineNumber;
 }
 
+// textarea에서, 선택된 텍스트를 반환 
+function getSelectedTextFromTextarea(textareaElement) {
+  // Check if element is a valid textarea
+  if (!textareaElement || textareaElement.tagName !== "TEXTAREA") {
+    throw new Error("Invalid element provided. Please specify a valid textarea.");
+  }
+  // Check if there is any text selection
+  if (textareaElement.selectionStart === textareaElement.selectionEnd) {
+    return "";
+  }
+ // Get the start and end positions of the selection
+  const start = textareaElement.selectionStart;
+  const end = textareaElement.selectionEnd;
+  // Extract the selected text
+  const selectedText = textareaElement.value.substring(start, end);
+
+  return selectedText;
+}
+
+
+// textarea의 내용을 전부 주고, 두 줄 사이의 구간을 추출해 리턴 한다.
+function extractTextBlock(textarea1, line1, line2) {
+  let text = textarea1.value;
+
+  // Check for invalid inputs
+  if (!text || !line1 || !line2 || line1 < 1 || line1 > line2) {
+    return [];
+  }
+  // Split the text into lines
+  const lines = text.split('\n');
+  // Extract the specified lines
+  const extractedLines = lines.slice(line1 - 1, line2);
+
+  return extractedLines;
+}
+
+// 위의 extractLines를 다른 텍스트 영역에 복사하는 다른 함수
+function copyTextBlockToTextarea(extractedLines, targetTextarea) {
+  //const targetTextarea = document.getElementById(targetTextareaId);
+
+  // Check if the element is a textarea
+  if (!targetTextarea || targetTextarea.tagName !== 'TEXTAREA') {
+    throw new Error(`Invalid target element: ${targetTextareaId}`);
+  }
+
+  // Clear the target textarea
+  targetTextarea.value = "";
+
+  // Append each extracted line to the textarea
+  extractedLines.forEach((line) => {
+    targetTextarea.value += `${line}\n`;
+  });
+}
+
+
 
 // 기존 GOTO 버튼들을 클리어 삭제 한다.
 function resetGoButtons() {
@@ -302,22 +357,39 @@ function resetGoButtons() {
 			for (var i = divElement.children.length-1; i >= 0 ; i--) {
 				//console.log('기존 택 네임',divElement.children[i].tagName);
 				if (divElement.children[i].tagName == 'BUTTON') {
-					//console.log('버튼임...',i);
+					divElement.removeChild(divElement.children[i]);
+				}
+		}
+	}
+}
+// 리턴문들을 모은 목록을 지워서 새로 쓸 준비를 한다
+function resetReturnerButtons() {
+	const divElement = document.getElementById('def3');
+
+	// Check if the div exists
+	if (divElement) {
+		removeBRTags(divElement);
+		// Loop through child elements and log tag names
+			for (var i = divElement.children.length-1; i >= 0 ; i--) {
+				//console.log('기존 택 네임',divElement.children[i].tagName);
+				if (divElement.children[i].tagName == 'BUTTON') {
 					divElement.removeChild(divElement.children[i]);
 				}
 		}
 	}
 }
 
+
+
 // 정한 수만큼 특정 문자로 이루어진 문자열 만들어 리턴.
 function generateString(numberOfCharacters) {
   let string = "";
   for (let i = 0; i < numberOfCharacters; i++) {
-    //string += "⬮"; 
+    //string += "?"; 
 	string += "▶";
   }
   if (numberOfCharacters == 0) {
-	string = "🗍";
+	string = "??";
   }
 	//debugger;
 
@@ -327,6 +399,7 @@ function generateString(numberOfCharacters) {
 
 // 라인 가기용 다이나믹 버튼 추가 
 // extraValue : 줄 번호.
+// 버튼이 들어갈 DIV는 정해져 있다.
 function add_GoButton(id, label, extraValue, isRemark, param_count) {
 	// Create a new button element
 	var button = document.createElement('button');
@@ -341,9 +414,11 @@ function add_GoButton(id, label, extraValue, isRemark, param_count) {
 	if (isRemark) {
 		button.removeAttribute('class');
 		button.classList.add('btnGotoRemark');
+		button.classList.add('btnCalling'); // 이 박스의 CSS클래스 정의해주기		
 	} else {
 		button.removeAttribute('class');
 		button.classList.add('btnGotoNormal');
+		button.classList.add('btnCalling'); // 이 박스의 CSS클래스 정의해주기		
 	}
 	
 	// Set data-extra-value using a data attribute
@@ -369,6 +444,40 @@ function add_GoButton(id, label, extraValue, isRemark, param_count) {
 	}	
 	// Append the button to the body or another desired location
 	//document.body.appendChild(button);
+}
+
+function isCommentedLine() {
+}
+
+// 이전 함수인 addgobutton 에서는, 루프를 밖에서 돌았지만, 이 함수에선, 내부에서 처리하기로 함.
+// e.g. arg1: {line: 167, statement:"return functionCallsWithLineNumbers;", isCommentLine? T/F }
+function add_ReturnersButton(rets1) {
+	resetReturnerButtons();
+	
+
+	const divContainer = document.getElementById('def3');
+	
+	if (Array.isArray(rets1)) {
+		//rets1.forEach(index => {
+		rets1.forEach(returnObj => {
+			var button = document.createElement('button');
+			button.id = returnObj.line;
+			button.innerHTML = returnObj.statement;
+			button.title = 'at line ' + returnObj.line;
+			// button.classList
+			button.classList.add('btnReturn'); // 이 박스의 CSS클래스 정의해주기
+			
+			if (returnObj.isCommentLine) {
+				button.classList.add('btnGotoRemark');
+			}
+
+			button.onclick = function() {
+				gotoLine2(returnObj.line);
+			};
+			
+			divContainer.appendChild(button);
+		});
+	}
 }
 
 
@@ -415,8 +524,119 @@ function getNextOption(selectElement, currentIndex) {
   }
 }
 
+// 람다 함수와 익명 함수를 올라가며 찾는다.
+function getRawBackLambda(textarea, startLine) {
+	//let ret = [];
+	let ret = 1999;
+    const lines = textarea.value.split('\n');
+    const regAnony = /(.+)function +\(\)/;
+    const regArrow = /\(\) +=> +{/; // /() => {/;
+
+    //for (let i = startLine-1; i < lines.length; i++) {
+    for (let i=startLine-1; i >=0; i--) {
+        const line = lines[i];
+        
+        const isAnony = line.match(regAnony);
+        const isArrow = line.match(regArrow);
+
+        // Check if the number of open braces is zero, indicating the end of the function
+        if (isAnony) {
+        	// console.log('익명', isAnony[1]);
+			ret = i+1;
+			return { lineNum:ret, parameters:['anon'], functionName:line };
+        } else if (isArrow) {
+        	//console.log('ARROW 17', line);
+			//ret.push({ ln:i+1, st:isArrow[1] });
+			ret = i+1;
+			return { lineNum:ret, parameters:['arro'], functionName:line };
+        }
+    }
+
+	return { lineNum:-2999, parameters:[], functionName:'NoName' };	// 단지 줄번호만 리턴한다
+	// return ret;
+}
+
+
+
+// 주어진 줄번호로부터 함수 구간(시작부)을 알아내는 함수.
+function getRawBackFunction2(textarea1, curLine) {
+	const lines = textarea1.value.split('\n');
+    const functionRegex = /^function\s+(\w+)\s*\(([^)]*)\)/;
+	
+	// for (let i = lines.length - 1; i >= 0; i--) {
+	const startLine = curLine;
+	for (let i = startLine - 1; i >= 0; i--) {
+        const lineNumber_pure = i + 1;
+        const line = lines[i];		
+		
+		const match = line.match(functionRegex);
+
+		if (match) {
+			// Extract the function name (group 1) and parameters (group 2)
+			const functionName = match[1];
+			const parameters = match[2].split(',').map(param => param.trim());
+			const lineNum = parseInt(lineNumber_pure);
+			// functionInfo.push({ functionName, parameters, lineNum });
+			return { lineNum, parameters, functionName };	// 단지 줄번호만 리턴한다
+		}
+	}
+	return { lineNum:-2999, parameters:[], functionName:'NoName' };
+}
+
+// 주어진 줄번호로부터 함수 구간(시작부)을 알아내는 함수.
+function getRawBackFunction(textarea1, curLine) {
+	const lines = textarea1.value.split('\n');
+    const functionRegex = /^function\s+(\w+)\s*\(([^)]*)\)/;
+	
+	// for (let i = lines.length - 1; i >= 0; i--) {
+	const startLine = curLine;
+	for (let i = startLine - 1; i >= 0; i--) {
+        const lineNumber_pure = i + 1;
+        const line = lines[i];		
+		
+		const match = line.match(functionRegex);
+
+		if (match) {
+			// Extract the function name (group 1) and parameters (group 2)
+			// const functionName = match[1];
+			// const parameters = match[2].split(',').map(param => param.trim());
+			const lineNum = parseInt(lineNumber_pure);
+
+			return lineNum;	// 단지 줄번호만 리턴한다
+		}
+	}
+}
+
+// 함수의 끝을 찾는다. 단, 주석처리된 브라켓이 없어야 함.(구:findEndOfFunction)
+// 결과 콘솔 출력: https://postimg.cc/cvZ88f6y
+function getRawForthFunction(textarea, startLine) {
+    const lines = textarea.value.split('\n');
+    let openBraceCount = 0;
+
+	cl("주어진 스타트라인:",startLine-1);
+    for (let i = startLine - 1; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Count opening and closing braces
+        openBraceCount += (line.match(/{/g) || []).length;
+        openBraceCount -= (line.match(/}/g) || []).length;
+
+        // Check if the number of open braces is zero, indicating the end of the function
+        if (openBraceCount === 0 && i > startLine - 1) {
+			// cl("끝줄 직전줄 표시합니다", line-1);
+			// console.log("끝줄 표시합니다", );
+			// console.log(`끝줄 ${line}, No:${i+1}`);
+            return i + 1; // Return the line number of the closing brace
+        }
+    }
+
+    return -1; // Return -1 if the end of the function is not found
+}
+
+
 
 // 현 커서 위치에서 뒤로간 함수 선언문의 위치 (즉, 대부분은 커서가 속한 함수 위치)
+// 주) SELECT LIST BOX에 의존하므로 삭제해야 함. (RawBack 함수가 대체해야...)
 function getNearBackFunction(datasetProperties, curLine) {
 	if (!(datasetProperties instanceof Array)) {
 	throw new Error('Invalid datasetProperties provided');
@@ -458,6 +678,89 @@ function getNearForthFunction(datasetProperties, curLine) {
 
 }
 
+/*
+  ┌───
+─┴───
+*/
+function extractCallSteps(startLine, endLine) {
+	const textarea1 = document.getElementById('code1');	  
+	const lines = textarea1.value.split('\n');
+	const regCalls = /\w+\s*\(.*\);/;
+	const regCurly9 = /\((.+)\)/;	// a.b(blah.x()) 등에서 우측 속괄호는 다 없앤다.(연산 편의를 위함)
+	const regDot = /[\w\[\]]+\.\w+\(.*\)/; // Dot라인 캐치:a.b(k)만 잡고, a(k)는 내버려두는 식.
+	/* TEST 해볼 것: Site는 regexr.com/7osud
+	a.b(); // 노 파라메터 시.
+	return match[1].split(k); // 꺽쇠 포함시.
+	*/
+	
+	const callSteps = [];
+	
+	for (let i=startLine-1; i < endLine; i++) {
+        const line = lines[i].trim();
+		
+		// 호출문을 먼저 바꿀 것인가, 아니면 여러 (K)들을 확보할 것인가?
+		// K를 만들어 놓고 호출문 여부를 판단해야 한다. 어떤 라인이건 간에...
+		const replacedLine = line.replace(regCurly9, "(k)");
+		// a.b(k) 이면 안되고, b(k) 식이면 된다.
+		const isDotCallLine = replacedLine.match(regDot);	// a.b(k)를 우선 솎아낸다. b(k)만 남음.
+		if (isDotCallLine) {
+			continue; // 이 줄이 a.b(k) 라면 추가하지 않고 next line 점검.
+		}
+		
+		// 원래 regCalls로 테스트하면 위 두 개를 다 가져오지만 regDot이 닷콜을 제거하였음.
+		const hasCall = regCalls.test(replacedLine);	// 호출문 가지고 있습니까
+		if (hasCall) {
+			const isCommentLine = false; // 항상 FALSE, 잠시....
+			callSteps.push({ lineNum:i+1, functionName:line, isCommentLine });
+		}
+	}
+	
+	if (callSteps.length == 0) {
+		setTextFlashInDiv('verbose1', '사용자 함수 호출이 없음.');
+	}
+	return callSteps;
+}
+
+
+
+function extractReturnStatements(textarea, lineNum1, lineNum2) {
+	const lines = textarea.value.split('\n');
+	const regReturnC = /^return \{.+\};/;	// ^이라, 트림을 전제로 함.
+	const regReturnS = /^return [\(\)a-zA-Z0-9\_ \-\+]+;/; // 한줄 리턴문.
+	
+	const regComment_C = /return [\(\)a-zA-Z0-9\_ \-\+]+;/;
+	const regComment_S = /return \{.+\};/;	// ^이라, 트림을 전제로 함.
+	
+    const extractedReturns = [];
+	
+    
+    for (let i = lineNum1 - 1; i < lineNum2; i++) {
+        const line = lines[i].trim();
+		const hasReturn_C = regReturnC.test(line);
+		const hasReturn_S = regReturnS.test(line);
+		
+		const hasComment_C = regComment_C.test(line);
+		const hasComment_S = regComment_S.test(line);
+
+		let isCommentLine = null;
+		let chunkIndex = -1;
+		if (hasReturn_C || hasReturn_S) {	// 복합 리턴문이 있다면, 그 줄을 기록
+			chunkIndex = line.indexOf('return ');
+			isCommentLine = false; // it is REAL return.
+		} else if (hasComment_C || hasComment_S) {	// 리턴문이 아니라면 코멘트된 리턴일 수있다.
+			chunkIndex = line.indexOf('return ');	// 주석처리된 것도 리턴을 해준다.
+			isCommentLine = true; // it is unreal return. (only for reference)
+		}		
+
+        if (chunkIndex !== -1) {
+            const returnStatement = line.substring(chunkIndex);
+            extractedReturns.push({ line: i + 1, statement: returnStatement, isCommentLine });
+        }
+    }
+
+    return extractedReturns;
+}
+
 
 
 // SELECT 박스에서 OPTION 항목의 요소를 구해 배열을 반환한다.
@@ -494,13 +797,101 @@ function getDatasetProperties(options, property) {
 }
 
 
+/*
+* extractor1; function name. e.g. extractCallSteps(),
+generateSelectOptions을 추후 대체하는...
+*/
+function constructSelectBox(extractor1) { // !!HTML_call
+  const selectElement = document.createElement('select');
+  //selectElement.id = '함수 정의 목록 funcdeflist' + defOrLis;
+  selectElement.id = 'selectbox03';
+  selectElement.size = 9;
+  selectElement.style.width = 'auto';
+  selectElement.classList.add('definiaSteps'); // 이 박스의 CSS클래스 정의해주기
 
+	const textarea1 = document.getElementById('code1');	   
+	const currentLine = getCaretLineNumber(textarea1);
+	const backFoo4 = getRawBackFunction(textarea1, currentLine);	// 시작줄
+	const nextFoo4 = getRawForthFunction(textarea1, backFoo4);  	// 탐색 끝줄(REGExPRESS)
+	
+  // 위에서 정의한 함수명으로 호출한다. 리스트 항목을 원시코드에서 추출.
+  defs00 = extractor1(backFoo4, nextFoo4);//extractFuncDefinitions();	// 여기서 Html 콜 여부도 체크해야... 
 
+  // SELECT 리스트 생성임. each item of defs00 목록.
+  defs00.forEach(item => {
+    // Create an <option> element for each function
+    const optionElement = document.createElement('option');
+	// item.functionName
+    // Set the value and text of the option based on the function name
+    optionElement.value = item.functionName;
+    optionElement.text = item.functionName;
+	optionElement.dataset.isHtmlCall = item.isHtmlCall;
+	optionElement.dataset.isRemark = item.isRemark;
+	optionElement.dataset.lineNum = item.lineNum;
+
+    // Append the option to the select element
+    selectElement.appendChild(optionElement);
+  });
+
+  // Get the <div> element with the ID 'def1'
+  const divContainer = document.getElementById('def1');
+	
+	
+  if (divContainer) {
+    // 리스트박스(SELECT) 추가하다
+	removeSelectTags(divContainer);	// DIV태그 내에 있는 SELECTBOX들을 모두 제거한다.
+    divContainer.appendChild(selectElement);
+	
+	const labelElement = document.getElementById("description1");
+	labelElement.textContent = '👞 Call Steps (호출도)';
+	
+  } else {
+    console.error("Error: 'def1' element not found.");
+  }
+
+  // 호출도(그림 도??) 함수 리스트의 클릭 이벤트 작성. ????????????????
+	selectElement.addEventListener('click', function() {
+		// 선택된 항목 없을 경우, 아무것도 하지 않음.
+		if (-1 == this.selectedIndex) 
+			return;
+		
+		// 기존 def2 버튼들을 지움 (def3도?)
+		resetGoButtons();	// 버튼 다 지움.
+		resetTextInDiv('params1');	//div 로그 영역 출력물 지움.
+		
+		const selectedOption = this.options[this.selectedIndex];
+		//console.log(`Selected option: ${selectedOption.value}`);
+		const gFuncName1 = selectedOption.value;
+		
+		// ** 대표 정의문에 대한 정보는 아래 블럭에 모은다	
+		// let isRemark = selectedOption.dataset.isRemark;
+		// isRemark = (isRemark === "true");	// boolean 식으로 바꾼다.	
+
+		const lineNum = selectedOption.dataset.lineNum;
+		setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
+		gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
+		
+		// 여기서 전역(지역) 변수도 보여줘야할 수 있다. +++++++++++++++
+		// 그러려면, 끝나는 줄 { } 도 알아야 한다.
+		// 끝나는 줄 대신, 다음 함수의 위치로 대체할 수 있다.
+
+		
+		// 마지막 인수를 true로 주면 코멘트임을 모른 채, 가져오기 때문에 버튼을 흐릿하게 표시 불가능.
+		// 버튼을 흐릿 표시하려면, 코멘트임을 함께 리턴하여야 함.(또는 그 기능 없이 타함수 별도 작성?
+		// const returner1 = extractReturnStatements(textarea1, startBracket, endBracket);
+		// console.log("RETURNS:",returner1);
+		// add_ReturnersButton(returner1);	// 
+		// const 를 모아서 SELECT박스로 해주세요
+		// gatherVars('code1');
+	});	// ??????????????????????????
+  
+}
+
+// generate함수는 코드체커4 앱에서만 유효하다. (HTML 첵에서는 CONSTRUCT로 변경통일 예정)
 function generateSelectOptions(defOrLis) { // !!HTML_call
   // 리스너만 다시 테스트해본다
   let defs00 = null;
-  
-  if (defOrLis == 0) // 정의냐 리스너냐 판단.
+    if (defOrLis == 0) // 정의냐 리스너냐 판단.
 	defs00 = extractFuncDefinitions();	// 여기서 Html 콜 여부도 체크해야...
   else
     defs00 = extractListenerDefinitions();	// 여기서 Html 콜 여부도 체크해야...
@@ -543,7 +934,7 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
 	
 	const calls1 = extractFunctionCallsWithLineNumbers();	//  모든 함수 호출 부분 모은 것
-	console.log('콜스(소스내 모든 호출들)',calls1.length);	//// 'ham3();', 'ham4(a,b,c);' ham4(d,e,f)
+	// console.log('콜스(소스내 모든 호출들)',calls1.length);	//// 'ham3();', 'ham4(a,b,c);' ham4(d,e,f)
 	
 	const ext_func_names = extractFunctionNames(calls1);
 	
@@ -569,8 +960,6 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	  });
 	} else {
 		//resetTextInDiv('params1');	// DIV 글자 지우기
-		
-		//cl(typeof isHtmlCall, "CALL 2첵 ?");
 		let msg2 = " ";//"Non-HTML";
 		if (isHtmlCall) {
 			msg2 = "그러나 !!HTML_call 입니다. ";
@@ -581,10 +970,10 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 			msgRemark = "주석부입니다" + isRemark;
 		}
 		
-		//const msg1 = lineNum+ ": 🚷 이 함수는 사용되지 않습니다."+gFuncName1+"' 🚷 FNF: Func NOT FOUND 893 " + msg2 + " 그리고 "+msgRemark;
-		const msg1 = `${lineNum}: 🚷 이 함수는 사용되지 않습니다. ${gFuncName1}' 🚷 FNF: Func NOT FOUND 893 ${msg2} 그리고 ${msgRemark}`;
+		//const msg1 = lineNum+ ": ?? 이 함수는 사용되지 않습니다."+gFuncName1+"' ?? FNF: Func NOT FOUND 893 " + msg2 + " 그리고 "+msgRemark;
+		const msg1 = `${lineNum}: ?? 이 함수는 사용되지 않습니다. ${gFuncName1}' ?? FNF: Func NOT FOUND 893 ${msg2} 그리고 ${msgRemark}`;
 		
-		//setTextInDiv('params1', "🚷 이 함수는 사용되지 않습니다 🚷 FNF: Func NOT FOUND 893 ");
+		//setTextInDiv('params1', "?? 이 함수는 사용되지 않습니다 ?? FNF: Func NOT FOUND 893 ");
 		setTextInDiv('params1', msg1);
 	}	
 	
@@ -615,9 +1004,34 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 		
 		gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
 		
+		// 여기서 전역(지역) 변수도 보여줘야할 수 있다. +++++++++++++++
+		// 그러려면, 끝나는 줄 { } 도 알아야 한다.
+		// 끝나는 줄 대신, 다음 함수의 위치로 대체할 수 있다.
+		const textarea1 = document.getElementById('code1');	  
+		const startBracket = lineNum;
+		const nextOption = this.options[this.selectedIndex+1];
+		
+		let endBracket = -899;
+		cl("다음 함수 위치", endBracket);
+
+		if (undefined == nextOption) {	// 다음 위치가 없으면 EOF로 간주, 파일 끝 선까지 지정.
+			setTextFlashInDiv('verbose1', "마지막 함수는 RETURN값 체크 불가능.? ");
+			return;
+			endBracket = startBracket + 100;	// 임의로 지정. 에러날 수 있음.
+		} else {
+			endBracket = nextOption.dataset.lineNum - 1;	// ???			
+		}
+		
+		// 마지막 인수를 true로 주면 코멘트임을 모른 채, 가져오기 때문에 버튼을 흐릿하게 표시 불가능.
+		// 버튼을 흐릿 표시하려면, 코멘트임을 함께 리턴하여야 함.(또는 그 기능 없이 타함수 별도 작성?
+		const returner1 = extractReturnStatements(textarea1, startBracket, endBracket);
+		console.log("RETURNS:",returner1);
+		add_ReturnersButton(returner1);	// 
+		// const 를 모아서 SELECT박스로 해주세요
+		// gatherVars('code1');
 	});
 	
-  // Iterate through each function
+  // SELECT 리스트 생성임. each item of defs00 목록.
   defs00.forEach(item => {
     // Create an <option> element for each function
     const optionElement = document.createElement('option');
@@ -691,7 +1105,38 @@ function extractParameters(functionCallString) {
 window.addEventListener("keydown", (e) => {
 
 	if (e.key === "F2") {
+		const textarea1 = document.getElementById('code1');	  
+		const currentLine = getCaretLineNumber(textarea1);
+		// cl("현 라인", currentLine);
+		
+		const backLam4 = getRawBackLambda(textarea1, currentLine);
+		const backFoo4 = getRawBackFunction2(textarea1, currentLine);	// 시작줄 뿐만 아니라 함수명, 파라메터들.
+		// console.log("현 라인-A", backLam4.lineNum);
+		// console.log("현 라인-A", backLam4.functionName);
+		// console.log("현 라인-B", backFoo4.lineNum);
+		
+		const lineLambda = backLam4.lineNum ?? -1999;	// 표시용으로서 실제 GOTO는 안하므로
+		const lineGefunc = backFoo4.lineNum ?? -1999;	// undefined 면 -1999값을 준다.
+
+		// console.log("현 라인-A1", lineLambda);
+		// console.log("현 라인-B1", lineGefunc);
+		
+		const backNumber = (lineLambda > lineGefunc) ? lineLambda : lineGefunc; // 더 아래(최근)인 줄번호를 가져온다.
+		const backNumberSt = (lineLambda > lineGefunc) ? lineLambda+" "+backLam4.functionName : lineGefunc+"(Foo)";
+		
+		//"(lambda or anonymous)" : lineGefunc + "(Foo)";
+		const nextFoo4 = getRawForthFunction(textarea1, backNumber);  	// 함수 끝줄
+		// cl(lineLambda, "변경된 Backward 익명함수 선언");
+		// cl(lineGefunc, "변경된 Backward 일반함수 선언");
+		
+		resetTextInDiv('prevFoo');
+		resetTextInDiv('nextFoo');
+		
+		setTextInDiv('prevFoo', backNumberSt);
+		setTextInDiv('nextFoo', nextFoo4);	// 끝지점이지만 다음 함수 위치 넣어주는 게 좋음
+		
 		// 어느 줄인지 표시.
+		/*
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1);
 		// 밑 함수 이름 표시.
@@ -712,11 +1157,37 @@ window.addEventListener("keydown", (e) => {
 		const nextFoo3 = getNearForthFunction(datasetProperties, currentLine);
 		const backFoo3 = getNearBackFunction(datasetProperties, currentLine);
 		
+		const nextLine = (nextFoo3 == null) ? -999 : nextFoo3.lineNumber;
 		resetTextInDiv('prevFoo');
 		resetTextInDiv('nextFoo');
+		
 		setTextInDiv('prevFoo', backFoo3.key + ": " + backFoo3.lineNumber);
-		setTextInDiv('nextFoo', nextFoo3.key + ": " + nextFoo3.lineNumber);
+		if (nextFoo3 == null) {
+			setTextInDiv('nextFoo', "EOF!");
+		} else {
+			setTextInDiv('nextFoo', nextFoo3.key + ": " + nextLine);
+		}
+		*/
+		
 		// nextFoo 의 리턴값이 3종임을 나중에 어떻게 기억하는가?
+	} else if (e.key === "F4") {	// F4는 변수를 추적해 정보를 알려준다.
+		const textarea1 = document.getElementById('code1');	  
+		const currentLine = getCaretLineNumber(textarea1);
+		const backFoo4 = getRawBackFunction(textarea1, currentLine);
+		
+		console.log(backFoo4, "이것이 함수 시작 줄 [변수 추적의 토대]");
+		
+		const nextFoo4 = getRawForthFunction(textarea1, backFoo4);
+		
+		const block1 = extractTextBlock(textarea1, backFoo4, nextFoo4);
+		// 
+		// 다른 텍스트 박스에 복사해 넣기(테스트)
+		//const textarea2 = document.getElementById('code2');
+		//copyTextBlockToTextarea(block1, textarea2);
+		// 선택된 변수를 찾아주어야 한다.
+		const kwd1 = getSelectedTextFromTextarea(textarea1);
+		// console.log(kwd1, "탐색하기로 선택된 변수");
+		setTextFlashInDiv('verbose1', "탐색할 변수 "+ kwd1);
 	}
   
 });
@@ -902,7 +1373,7 @@ function findKeywordInSelectAndSelect(selectTag, keyword) {
   }
 
   // If no option is found, return null, 처음으로도 옮긴다.
-  setTextFlashInDiv('verbose1', "더 이상 없음.❗ ");
+  setTextFlashInDiv('verbose1', "더 이상 없음.? ");
   options[0].selected = true;
   selectTag.scrollIntoView({ behavior: 'smooth' });
   
@@ -948,7 +1419,7 @@ function finderKeyPress(e) { // !!HTML_Call
 /*
 이 함수의 작성 요청과 GPT설명
 https://postimg.cc/tZtGRxHg
-setTextFlashInDiv('verbose', "기존 배열 요소와 겹칩니다❗ ");
+setTextFlashInDiv('verbose', "기존 배열 요소와 겹칩니다? ");
 */
 function setTextFlashInDiv(divId, text) {
   const targetDiv = document.getElementById(divId);
