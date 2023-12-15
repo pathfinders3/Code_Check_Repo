@@ -557,6 +557,23 @@ function getNextOption(selectElement, currentIndex) {
   }
 }
 
+// 전방 모든 선언 종류 발견시 정지. ↑..↓
+function getRawBackDisclosure(textarea1, currentLine) {
+	const backLam4 = getRawBackLambda(textarea1, currentLine);
+	const backFoo4 = getRawBackFunction2(textarea1, currentLine);
+	
+
+	
+	const lam5 = backLam4.lineNum ?? -4999;	// 표시용으로서 실제 GOTO는 안하므로
+	const foo5 = backFoo4.lineNum ?? -4999;	// 표시용으로서 실제 GOTO는 안하므로
+	
+	const backNumber = (lam5 > foo5) ? lam5 : foo5;	// 더 큰 값을 선택해야 더 최근이다.
+	const backDisclosureName = (lam5 > foo5) ? backLam4.functionName : backFoo4.functionName;
+	const backParameterType = (lam5 > foo5) ? backLam4.parameters : backFoo4.parameters;
+	
+	return { lineNum:backNumber, backParameterType, functionName:backDisclosureName  };	
+}
+
 // 람다 함수와 익명 함수를 올라가며 찾는다.
 function getRawBackLambda(textarea, startLine) {
 	//let ret = [];
@@ -565,7 +582,8 @@ function getRawBackLambda(textarea, startLine) {
     const regAnony = /(.+)function +\(\)/;
     const regArrow = /\(\) +=> +{/; // /() => {/;
 
-    for (let i=startLine-1; i >=0; i--) {
+	// 시작 줄(given-1)에서 1줄 전부터 올라간다.
+    for (let i=(startLine-1)-1; i >=0; i--) {
         const line = lines[i];
         
         const isAnony = line.match(regAnony);
@@ -647,18 +665,20 @@ function getRawForthFunction(textarea, startLine) {
     const lines = textarea.value.split('\n');
     let openBraceCount = 0;
 
-	cl("주어진 스타트라인:",startLine-1);
+	// cl("주어진 스타트라인:",startLine-1);
     for (let i = startLine - 1; i < lines.length; i++) {
         const line = lines[i];
-
+		
+		if (undefined == line) {
+			continue;
+		}
+		
         // Count opening and closing braces
         openBraceCount += (line.match(/{/g) || []).length;
         openBraceCount -= (line.match(/}/g) || []).length;
 
         // Check if the number of open braces is zero, indicating the end of the function
         if (openBraceCount === 0 && i > startLine - 1) {
-			// cl("끝줄 직전줄 표시합니다", line-1);
-			// console.log("끝줄 표시합니다", );
 			// console.log(`끝줄 ${line}, No:${i+1}`);
             return i + 1; // Return the line number of the closing brace
         }
@@ -669,48 +689,6 @@ function getRawForthFunction(textarea, startLine) {
 
 
 
-// 현 커서 위치에서 뒤로간 함수 선언문의 위치 (즉, 대부분은 커서가 속한 함수 위치)
-// 주) SELECT LIST BOX에 의존하므로 삭제해야 함. (RawBack 함수가 대체해야...)
-function getNearBackFunction(datasetProperties, curLine) {
-	if (!(datasetProperties instanceof Array)) {
-	throw new Error('Invalid datasetProperties provided');
-	}
-	// 뒤에서부터 거꾸로 찾는다. 현재 줄보다 작은 줄번호가 첫번째로 나오면, 바로 리턴한다.
-	let matchingKey = null;
-	for (let i = datasetProperties.length - 1; i >= 0; i--) {
-	  if (Number(datasetProperties[i].value) < curLine) {
-		matchingKey = datasetProperties[i].key;
-		const matchingLineNumber = Number(datasetProperties[i].value);		
-		return { key: matchingKey, index: i, lineNumber: matchingLineNumber };	
-		// break;
-	  }
-	}
-	//return matchingKey;	// key is actually a Line Number.
-}
-
-// returns the first key which value is greater than the given curLine(value)
-// datasetProperties: 'lineNum' 이라는 키값으로 구해놓은 집합을 인수로 주는 것.
-function getNearForthFunction(datasetProperties, curLine) {
-//function getKeyByValue(datasetProperties, value) {
-  if (!(datasetProperties instanceof Array)) {
-    throw new Error('Invalid datasetProperties provided');
-  }
-  // Find the 첫번째 key that matches the given curLine
-  // const matchingKey = datasetProperties.find((property) => Number(property.value) > curLine)?.key;
-
-  const matchingIndex = datasetProperties.findIndex((property) => Number(property.value) > curLine);
-  
-  if (matchingIndex !== -1) {	// 맞은 'lineNum'이 있으면 리턴한다
-    const matchingKey = datasetProperties[matchingIndex].key;
-	const matchingLineNumber = Number(datasetProperties[matchingIndex].value);
-
-    return { key: matchingKey, index: matchingIndex, lineNumber: matchingLineNumber };
-    //return matchingKey;	// key is actually a Line Number.
-  } else {
-    return null; // Or any other indication that no matching item was found
-  }  
-
-}
 
 /*
   ┌───
@@ -722,14 +700,18 @@ function extractCallSteps(startLine, endLine) {
 	const regCalls = /\w+\s*\(.*\);/;
 	const regCurly9 = /\((.+)\)/;	// a.b(blah.x()) 등에서 우측 속괄호는 다 없앤다.(연산 편의를 위함)
 	const regDot = /[\w\[\]]+\.\w+\(.*\)/; // Dot라인 캐치:a.b(k)만 잡고, a(k)는 내버려두는 식.
-	/* TEST 해볼 것: Site는 regexr.com/7osud
+	/** TEST 해볼 것: Site는 regexr.com/7osud
 	a.b(); // 노 파라메터 시.
 	return match[1].split(k); // 꺽쇠 포함시.
-	*/
+	**/
 	
 	const callSteps = [];
 	
 	for (let i=startLine-1; i < endLine; i++) {
+		if (i<0) {	// -999 시리즈의 괴상한 라인값이 주어질 수도 있다. 커서 위쪽으로 찾다보면...
+			console.error(i, "부적절한 라인값. Inappropriate Line Number Given");
+			return callSteps;//[];
+		}
         const line = lines[i].trim();
 		
 		// 호출문을 먼저 바꿀 것인가, 아니면 여러 (K)들을 확보할 것인가?
@@ -831,11 +813,12 @@ function getDatasetProperties(options, property) {
 }
 
 
-/*
-* extractor1; function name. e.g. extractCallSteps(),
-generateSelectOptions을 추후 대체하는...
-*/
-function constructSelectBox(extractor1) { // !!HTML_call
+/**
+* 
+generateSelectOptions을 추후 대체하는 construct 시리즈 함수.
+constructSelectBox() 이 함수는 extractCallSteps() 으로 함수 호출 계층도를 표시한다.
+**/
+function constructSelectBox() { // !!HTML_call
   const selectElement = document.createElement('select');
   //selectElement.id = '함수 정의 목록 funcdeflist' + defOrLis;
   selectElement.id = 'selectbox03';
@@ -845,11 +828,13 @@ function constructSelectBox(extractor1) { // !!HTML_call
 
 	const textarea1 = document.getElementById('code1');	   
 	const currentLine = getCaretLineNumber(textarea1);
-	const backFoo4 = getRawBackFunction(textarea1, currentLine);	// 시작줄
+	//const backFoo4 = getRawBackFunction(textarea1, currentLine);	// 시작줄
+	//const nextFoo4 = getRawForthFunction(textarea1, backFoo4);  	// 탐색 끝줄(REGExPRESS)
+	const backFoo4 = getRawBackDisclosure(textarea1, currentLine).lineNum;
 	const nextFoo4 = getRawForthFunction(textarea1, backFoo4);  	// 탐색 끝줄(REGExPRESS)
 	
   // 위에서 정의한 함수명으로 호출한다. 리스트 항목을 원시코드에서 추출.
-  defs00 = extractor1(backFoo4, nextFoo4);//extractFuncDefinitions();	// 여기서 Html 콜 여부도 체크해야... 
+  defs00 = extractCallSteps(backFoo4, nextFoo4);
 
   // SELECT 리스트 생성임. each item of defs00 목록.
   defs00.forEach(item => {
@@ -1046,7 +1031,6 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 		const nextOption = this.options[this.selectedIndex+1];
 		
 		let endBracket = -899;
-		cl("다음 함수 위치", endBracket);
 
 		if (undefined == nextOption) {	// 다음 위치가 없으면 EOF로 간주, 파일 끝 선까지 지정.
 			setTextFlashInDiv('verbose1', "마지막 함수는 RETURN값 체크 불가능.? ");
@@ -1144,24 +1128,15 @@ window.addEventListener("keydown", (e) => {
 		// cl("현 라인", currentLine);
 		
 		const backLam4 = getRawBackLambda(textarea1, currentLine);
-		const backFoo4 = getRawBackFunction2(textarea1, currentLine);	// 시작줄 뿐만 아니라 함수명, 파라메터들.
-		// console.log("현 라인-A", backLam4.lineNum);
-		// console.log("현 라인-A", backLam4.functionName);
-		// console.log("현 라인-B", backFoo4.lineNum);
+		const backFoo4 = getRawBackFunction2(textarea1, currentLine);	// 시작줄 뿐만 아니라 함수명, 파라메터들 리턴함.
 		
 		const lineLambda = backLam4.lineNum ?? -1999;	// 표시용으로서 실제 GOTO는 안하므로
 		const lineGefunc = backFoo4.lineNum ?? -1999;	// undefined 면 -1999값을 준다.
 
-		// console.log("현 라인-A1", lineLambda);
-		// console.log("현 라인-B1", lineGefunc);
-		
 		const backNumber = (lineLambda > lineGefunc) ? lineLambda : lineGefunc; // 더 아래(최근)인 줄번호를 가져온다.
-		const backNumberSt = (lineLambda > lineGefunc) ? lineLambda+" "+backLam4.functionName : lineGefunc+" "+backFoo4.functionName;
+		const backNumberSt = (lineLambda > lineGefunc) ? lineLambda+": "+backLam4.functionName : lineGefunc+": "+backFoo4.functionName;
 		
-		//"(lambda or anonymous)" : lineGefunc + "(Foo)";
 		const nextFoo4 = getRawForthFunction(textarea1, backNumber);  	// 함수 끝줄
-		// cl(lineLambda, "변경된 Backward 익명함수 선언");
-		// cl(lineGefunc, "변경된 Backward 일반함수 선언");
 		
 		resetTextInDiv('prevFoo');
 		resetTextInDiv('nextFoo');
