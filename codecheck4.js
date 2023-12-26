@@ -15,16 +15,65 @@ document.addEventListener("DOMContentLoaded", function () {
 		const txtFind = document.getElementById('txtFind');
 		const lstDef0 = document.getElementById('lstFuncDefinitions0');
 		
-		// console.log(txtFind.value, "를 찾겠다");
-		
+
 		if (lstDef0 == null || lstDef0 == undefined) {
 			console.error("리스트를 먼저 세팅하시요. Show 버튼 2개중 한개를 눌러서...");
 			return;
 		}
-		// console.log(lstDef0.id, "에서");
-		
-		// findKeywordInSelect(lstDef0, txtFind.value);
+
 		findKeywordInSelectAndSelect(lstDef0, txtFind.value);
+	});
+
+	// 리팩토링용 편집 박스.
+	const editDiv1 = document.getElementById('editableDiv');
+	editDiv1.addEventListener('keydown', function(event) {
+		// F6 키를 여러번 눌러 REFINE 할 수 있게 한다.(F8로 하면 작동하지 않음)❌❌❌
+		if (event.key === "F9") {
+			const kwd2 = document.getElementById('kwd2').value;
+			const iterator = document.getElementById('kwd_iterator');
+			// const start = Number(document.getElementById('kwd_iterator').value);
+			const start = getIteratorValue();
+			
+			
+			// 통일성을 위해 매치[1]에 대한 괄호를 씌운다.
+			const eq1 = /.+\s*= (.+);/;
+			const eq2 = /=(.+);/;	// 등식에서 우측 Catch.
+			const eq3 = /\((.+)\)/;	// 등식에서 괄호 캐치.
+			const regFive = [ eq1, eq2, eq3, /\".+\"/, /\[.+\]/ ];
+			let i = -1;
+			for (i=start; i<3; i++) {
+				const res = findGrpMatches(kwd2, regFive[i]);
+				
+				//if (Array.isArray(res) && res.length == 0) {
+				if (null == res || res.length == 0) {
+				  console.log("결과값 없음. 상황 i:",i);	// 추출된 식 없음, 3개 입력박스 업데이트 불필요.
+				  continue;	// 아예 결과가 없으니 다음 i식으로 간다.
+				}
+				// cl( res.capturedGroup );
+				// 정규식 찾은 값은 원본 기준 인덱스라서, 원본 라인을 잘라야 한다.
+				const insect1 = makeThreeStrings(kwd2, res.index, res.capturedGroup.length);
+				//cl(insect1 );
+				
+				if (insect1[1] === kwd2) {
+					console.log("같아서 업데이트 불필요 상황 i:",i);
+					continue; // 다음 i로 다른 식을 고른다. 다음 i식으로 간다.
+				}
+
+				console.log("FOUNDED I:",i);
+				appendTextInput('kwd1', insect1[0]);	// 좌우측엔 쌓아놓고, 중간값은 새로 넣는다
+				setTextInput('kwd2', insect1[1]);
+				prependTextInput('kwd3', insect1[2]);
+				
+				break;
+			}
+			iterator.value = i;
+			if (i == 2) {
+				setTextFlashInDiv('verbose1', '계수 i가 최대값에 도달');
+			}
+			
+		} else if (event.key == "`") {	// 이 버튼을 눌러 변형된 문자열을 APPLY
+			cl("APPLY! refined TEXT");
+		}
 	});
 	
 });
@@ -124,8 +173,6 @@ function extractListenerDefinitions() {
 		  cl(match[0], "a match114");	// whole match string
 		  cl(match[1], "a match114-1"); //	btnsomething
 		  cl(match[2], "a match114-2");	// click or mousemove...
-		  // cl(match[3], "a match114-3");
-		  // cl(match[4], "a match114-4");
 		  
 		  cl(lineNumber_pure);
         // Extract the function name (group 1) and parameters (group 2)
@@ -197,7 +244,6 @@ function setCaretSel(textareaId, nn, n2) {
   t1.setSelectionRange(nn, nn); // Needed, to Scroll.
   t1.blur();  
   t1.focus();  
-  //t1.setSelectionRange(nn, nn + n2);  
   t1.setSelectionRange(nn, n2);  
 }
 
@@ -262,15 +308,7 @@ function gotoLine() {	// !!HTML_call
 	scrollToLineNumber('code1', line1);
 }
 
-// 버튼에 달린 메타데이터값에 라인을 지정후, 그 라인을 읽어서 이동한다.
-// function gotoLine_ByMeta() {
-	// const button = document.getElementById("btnPrevFoo");
-	// const lineNum1 = button.dataset.lineNum;
-	// cl("메타 라인넘은 ", lineNum1);
-	// gotoLine2(lineNum1);
-// }
-
-// 준 ID1에 해당하는 버튼에 달린 메타데이터에 지정된 줄로 이동한다. 
+// 버튼에 달린 준 ID1에 해당하는 메타데이터에 지정된 줄로 이동한다. 
 function gotoLine_ByMeta2(id1) {
 	const button = document.getElementById(id1);
 	//const button = document.getElementById("btnNextFoo");
@@ -305,6 +343,14 @@ function gotoLine2(line1) {
 	scrollToLineNumber('code1', line1);
 	// 라인에 하이라이트 준다
 	selectLine('code1', line1);	
+}
+
+// 현재 커서가 위치한 줄 텍스트 리턴.
+function getCaretLineText(textarea, row) {
+	let caretPosition = textarea.selectionStart;
+	const lines = textarea.value.split("\n");
+	
+	return lines[row];
 }
 
 // 현재 커서가 위치한 곳의 줄번호 표시
@@ -954,11 +1000,9 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	
 	const calls1 = extractFunctionCallsWithLineNumbers();	//  모든 함수 호출 부분 모은 것
 	// console.log('콜스(소스내 모든 호출들)',calls1.length);	//// 'ham3();', 'ham4(a,b,c);' ham4(d,e,f)
-	
+
+	//console.log(gFuncName1, " 찾고 있읍니다");	
 	const ext_func_names = extractFunctionNames(calls1);
-	
-	//console.log(gFuncName1, " 찾고 있읍니다");
-	//console.log(ext_func_names, " 에서요"); // 중복 함수명은 여러번 호출된다는 것을 말함.
 	const indices1 = findStringOccurrences(ext_func_names, gFuncName1);
 
 	// ** 아래는 대표 정의문에 딸린 반복문이 된다.
@@ -989,10 +1033,7 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 			msgRemark = "주석부입니다" + isRemark;
 		}
 		
-		//const msg1 = lineNum+ ": ?? 이 함수는 사용되지 않습니다."+gFuncName1+"' ?? FNF: Func NOT FOUND 893 " + msg2 + " 그리고 "+msgRemark;
 		const msg1 = `${lineNum}: ?? 이 함수는 사용되지 않습니다. ${gFuncName1}' ?? FNF: Func NOT FOUND 893 ${msg2} 그리고 ${msgRemark}`;
-		
-		//setTextInDiv('params1', "?? 이 함수는 사용되지 않습니다 ?? FNF: Func NOT FOUND 893 ");
 		setTextInDiv('params1', msg1);
 	}	
 	
@@ -1012,11 +1053,6 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 		
 		showFuncParams(gFuncName1);
 
-		// ** 대표 정의문에 대한 정보는 아래 블럭에 모은다	
-		// let isHtmlCall = selectedOption.dataset.isHtmlCall;
-		// isHtmlCall = (isHtmlCall === "true");	// boolean 식으로 바꾼다.
-		// let isRemark = selectedOption.dataset.isRemark;
-		// isRemark = (isRemark === "true");	// boolean 식으로 바꾼다.	
 		const lineNum = selectedOption.dataset.lineNum;
 		
 		setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
@@ -1043,7 +1079,7 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 		// 마지막 인수를 true로 주면 코멘트임을 모른 채, 가져오기 때문에 버튼을 흐릿하게 표시 불가능.
 		// 버튼을 흐릿 표시하려면, 코멘트임을 함께 리턴하여야 함.(또는 그 기능 없이 타함수 별도 작성?
 		const returner1 = extractReturnStatements(textarea1, startBracket, endBracket);
-		console.log("RETURNS:",returner1);
+		// console.log("RETURNS:",returner1);
 		add_ReturnersButton(returner1);	// 
 		// const 를 모아서 SELECT박스로 해주세요
 		// gatherVars('code1');
@@ -1075,7 +1111,7 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
   } else {
     console.error("Error: 'def1' element not found.");
   }
-}
+}	/** --- End of generateSelectOptions() --- */
 
 // 선언 정의 부에 대해서만 찾는다
 /*
@@ -1146,7 +1182,8 @@ window.addEventListener("keydown", (e) => {
 
 		setMeta_Prev(backNumber);
 		setMeta_Next(nextFoo4);
-	} else if (e.key === "F4") {	// F4는 변수를 추적해 정보를 알려준다.
+		
+	} else if (e.key === "F4") {	// F4는 변수를 추적해 정보를 알려주려 한다.
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1);
 		const backFoo4 = getRawBackFunction(textarea1, currentLine);
@@ -1164,10 +1201,114 @@ window.addEventListener("keydown", (e) => {
 		const kwd1 = getSelectedTextFromTextarea(textarea1);
 		// console.log(kwd1, "탐색하기로 선택된 변수");
 		setTextFlashInDiv('verbose1', "탐색할 변수 "+ kwd1);
+		
+	} else if (e.key === "F8") {	// F8키는 코드변경, 이름 변경에 사용된다
+		const textarea1 = document.getElementById('code1');	  
+		const currentLine = getCaretLineNumber(textarea1)-1;
+		const single1 = getCaretLineText(textarea1, currentLine);
+		// const doneContent = refineEditableDiv(single1);
+		
+		const editDiv1 = document.getElementById('editableDiv');
+		editDiv1.innerHTML = single1;
+		
+		setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
+		setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
+		
 	}
   
 });
 
+/**
+정규식과 전체 일치하는 문자열을 반환합니다
+*/  
+function findMatches(inputString, eq1) {
+  const matches = inputString.match(eq1) || [];
+
+  return matches.map((matchedString, index) => ({
+    index: inputString.indexOf(matchedString),
+    st:matchedString,
+  }));
+}
+/**
+정규식과 일치하는 괄호 그룹 #1의 문자열을 반환합니다
+*/  
+function findGrpMatches(inputString, eq1) {
+  const matches = inputString.match(eq1);
+
+  if (matches) {
+    const capturedGroup = matches[1];
+    const index = inputString.indexOf(capturedGroup);
+
+    return { index, capturedGroup };
+  }
+  return null;
+}
+
+
+/** 문자열을 입력받아 3개로 나눈다.
+*/
+function makeThreeStrings(str, ii, len0) {
+	if (ii < 0 || ii > str.length) {
+		throw new Error(ii,"ii 인덱스 부적합합니다");
+	}
+
+	const left1 = str.substring(0, ii);	
+	const mid1 = str.substring(ii, ii + len0);
+	const right1 = str.substring(ii + len0);
+	
+	return [left1, mid1, right1];
+}
+
+
+
+/* function refineEditableDiv2(content, reg1) {
+    // Create HTML with different colors for 'red' and other words
+	const match = content.match(reg1, 'g');
+	if (match) {
+		console.log(match[1], " GOOD매치됨 매치원:👍");
+		console.log(match[1].index, " 인덱스가 반드시 있을 것, GOOD매치됨 매치원:👍");
+		debugger;
+		console.log(content, "(원본) 남바2 IN");
+		return '<span style="color: orange;">' + match[1] + '</span>';
+	} else {
+		console.log(match, "아무것도 매치되지 않음. NULL... is MATCH");
+		return '<span style="color: black;">' + content + '</span>';
+	}
+}
+ */
+ 
+
+
+
+ 
+// Function to update the content of the editable DIV with different colors
+/**
+이 함수는 공백으로 나눈 후에야 처리함.
+*/
+function refineEditableDiv(content) {
+    let bFound = false;	// 한번이라도 찾았는지를 체크.
+    var redRegExp = /\(.+\)/;    
+
+    // Split the content into words
+    var words = content.split(' ');
+
+    // Create HTML with different colors for 'red' and other words
+    var htmlContent = words.map(function(word) {
+		if (redRegExp.test(word)) {
+			return '<span style="color: orange;">' + word + '</span>';
+			bFound = true;
+		} else {
+			return '<span style="color: black;">' + word + '</span>';
+		}
+	}).join(' ');
+
+	if (bFound)
+		return htmlContent;
+	return null;
+}
+
+
+  
 
 // 주어진 DIV 태그의 내용을 넣는다
 
@@ -1194,6 +1335,39 @@ function resetTextInDiv(divId) {
   } else {
     console.error(`Div with ID '${divId}' not found.`);
   }
+}
+
+/** 인풋 박스의 문자열 수정 하기 */
+function setTextInput(id, text) {
+	const input = document.getElementById(id);
+	if (input) {
+		input.value = text;
+	}
+}
+
+/** 인풋 박스의 문자열 추가하기 */
+function appendTextInput(id, text) {
+  const input = document.getElementById(id);
+  const currentText = input.value;
+  input.value = currentText + text;
+}
+/** 인풋 박스의 문자열 앞에다 추가하기 */
+function prependTextInput(id, text) {
+  const input = document.getElementById(id);
+  const currentText = input.value;
+  input.value = text + currentText;
+}
+
+
+/** 3분할 입력박스의 반복계수 지정
+*/
+function setIteratorValue(nn) {
+	const iterator = document.getElementById('kwd_iterator');
+	iterator.value = nn;
+}
+function getIteratorValue() {
+	const start = Number(document.getElementById('kwd_iterator').value);
+	return start;
 }
 
 
@@ -1242,35 +1416,21 @@ function extractFunctionNames(callStrings) {
 
 
 
-// Example usage:
-// const functionNamesInfo = extractFunctionNames();
-// console.log(functionNamesInfo);
 
 
-// Example usage:
-// const functionCallStrings = ['ham4(a, b, c);', 'foo();', 'bar(x, y);'];
-// const extractedFunctionNames = extractFunctionNames(functionCallStrings);
-// console.log('Extracted Function Names:', extractedFunctionNames);
-
+/** Example usage:
+const myArray = ['apple', 'banana', 'orange'];
+const resultString = arrayToString(myArray);
+console.log(resultString);     */
 function arrayToString(array) {
   return array.join(', ');
 }
 
-// Example usage:
-// const myArray = ['apple', 'banana', 'orange'];
-// const resultString = arrayToString(myArray);
-// console.log(resultString);
 
 
-/*
+/**
 함수 콜의 함수이름 중에서, 내가 찾는 함수이름이 있는지를 알려준다 
 */
-/* function findString(array, targetString) {
-  const index = array.indexOf(targetString);
-  //return index !== -1 ? `String found at index ${index}` : 'String not found';
-  return index;
-}
- */
 function findStringOccurrences(array, targetString) {
   const indices = [];
   let currentIndex = array.indexOf(targetString);
@@ -1289,32 +1449,6 @@ function findStringOccurrences(array, targetString) {
 // const result = findStringOccurrences(myArray, targetString);
 // console.log(result);
 
-/*
-To get the line number at the caret's position in a textarea, you can use the selectionStart property of the textarea. Here's a function that does that:
-실패했으므로 안 씀
-*/
-/* function getCaretLineNumber(id1) {
-	//const textarea = document.getElementById('code1');
-	const textarea = document.getElementById(id1);
-	
-	if (!textarea || !textarea instanceof HTMLTextAreaElement) {
-		console.error('Invalid textarea element provided.');
-		return -1;
-	}
-
-	const textBeforeCaret = textarea.value.substring(0, textarea.selectionStart);
-	const lineBreaksBeforeCaret = textBeforeCaret.split('\n').length;
-
-	//cl(lineBreaksBeforeCaret, 'lineBreaksBeforeCaret');
-	return lineBreaksBeforeCaret;
-}
- */
- 
-// function findFunctionInList() {
-	// const select1 = document.getElementById('lstFuncDefinitions0');
-	
-	// return select1;
-// }
 
 // LISTBOX에서 찾은 뒤, 커서를 옮겨 선택까지 한다.
 function findKeywordInSelectAndSelect(selectTag, keyword) {
@@ -1332,7 +1466,7 @@ function findKeywordInSelectAndSelect(selectTag, keyword) {
       // If it does, select the option and scroll to it
       option.selected = true;
       selectTag.scrollIntoView({ behavior: 'smooth' });
-	  console.log("이 키워드를 찾음", optionText);
+	  // console.log("이 키워드를 찾음", optionText);
       return option;
     }
 
@@ -1369,29 +1503,6 @@ function finderKeyPress(e) { // !!HTML_Call
     return true;	// 일반 엔터키 이벤트를 처리함.
 }
 
-/* 찾기만 하는 함수
- function findKeywordInSelect(selectTag, keyword) {
-  // Get all options from the select tag
-  const options = selectTag.options;
-
-  // Loop through each option
-  for (let i = 0; i < options.length; i++) {
-    const option = options[i];
-    const optionText = option.text.toLowerCase();
-
-    // Check if the option text contains the keyword
-    if (optionText.includes(keyword.toLowerCase())) {
-      // If it does, return the option
-	  console.log("찾음1", optionText);
-      return option;
-    }
-  }
-
-  // If no option is found, return null
-  console.log("NOTFOUND! ");
-  return null;
-}
- */
 /*
 이 함수의 작성 요청과 GPT설명
 https://postimg.cc/tZtGRxHg
