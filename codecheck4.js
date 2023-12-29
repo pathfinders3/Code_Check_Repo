@@ -39,15 +39,22 @@ document.addEventListener("DOMContentLoaded", function () {
 			const eq1 = /.+\s*= (.+);/;
 			const eq2 = /=(.+);/;	// 등식에서 우측 Catch.
 			const eq3 = /\((.+)\)/;	// 등식에서 괄호 캐치.
-			const regFive = [ eq1, eq2, eq3, /\".+\"/, /\[.+\]/ ];
+			const eq4 = /\[(.+)\]/; // 꺽쇠[] 내부가 매치1.
+			const eq5 = /\[(.+)\]/; // 꺽쇠[] 내부가 매치1.
+			//const regFive = [ eq1, eq2, eq3, /\".+\"/, /\[.+\]/ ];
+			const regFive = [ eq1, eq2, eq3, eq4, /\"(.+)\"/ ];
 			let i = -1;
-			for (i=start; i<3; i++) {
+			for (i=start; i<regFive.length; i++) {
 				const res = findGrpMatches(kwd2, regFive[i]);
 				
 				//if (Array.isArray(res) && res.length == 0) {
 				if (null == res || res.length == 0) {
-				  console.log("결과값 없음. 상황 i:",i);	// 추출된 식 없음, 3개 입력박스 업데이트 불필요.
+				  console.log("결과값 없음. 식:",i);	// 추출된 식 없음, 3개 입력박스 업데이트 불필요.
 				  continue;	// 아예 결과가 없으니 다음 i식으로 간다.
+				} else if (undefined == res.capturedGroup) {
+					// 캡쳐 그룹 1번(match[1])이 정해지지를 않았다면...:undefined
+					console.log("부-결과값 없음. 식:",i);	
+					continue; // 역시 결과는 없는 것. (Sub-Result가 없다는 것)
 				}
 				// cl( res.capturedGroup );
 				// 정규식 찾은 값은 원본 기준 인덱스라서, 원본 라인을 잘라야 한다.
@@ -59,17 +66,23 @@ document.addEventListener("DOMContentLoaded", function () {
 					continue; // 다음 i로 다른 식을 고른다. 다음 i식으로 간다.
 				}
 
-				console.log("FOUNDED I:",i);
+				console.log(`${i}: 정규식 ${regFive[i]}`);
+				
 				appendTextInput('kwd1', insect1[0]);	// 좌우측엔 쌓아놓고, 중간값은 새로 넣는다
 				setTextInput('kwd2', insect1[1]);
 				prependTextInput('kwd3', insect1[2]);
 				
 				break;
 			}
-			iterator.value = i;
-			if (i == 2) {
-				setTextFlashInDiv('verbose1', '계수 i가 최대값에 도달');
+			iterator.value = i;	// 종료시 값
+			
+			if (i === regFive.length) {
+				setTextFlashInDiv('verbose1', '계수 i가 최대값 도달, 모두 찾음. [TERMINATED]');
 			}
+			
+			// if (i == 2) {
+				// setTextFlashInDiv('verbose1', '계수 i가 최대값에 도달');
+			// }
 			
 		} else if (event.key == "`") {	// 이 버튼을 눌러 변형된 문자열을 APPLY
 			cl("APPLY! refined TEXT");
@@ -368,6 +381,47 @@ function getCaretLineNumber(textarea) {
   
   return lineNumber;
 }
+
+/** 커서 열 위치 리턴 */
+function getCursorHorizonPosition(textarea) {
+  const cursorIndex = textarea.selectionStart;
+  // 현재 커서의 행과 열 위치를 가져오기
+  const lines = textarea.value.substr(0, cursorIndex).split('\n');
+  const currentLine = lines.length;
+  const currentColumn = lines[lines.length - 1].length; // 배열 읽기용이므로 +1 안함.
+
+  return currentColumn;
+}
+
+/**텍스트 영역에서 현재 줄의 첫 번째 열로 캐럿을 이동 */
+function moveCaretToFirstColumn(index1) {	// index1: 0 이 기본값이고, 3 이면 컬럼 3으로 이동.
+  const textarea = document.getElementById('code1');
+  const cursorPosition = getCursorPosition();
+  // Calculate the index of the first character of the current line
+  const firstCharIndex = textarea.value.lastIndexOf('\n', cursorPosition.index - 1) + 1;
+  const movedIndex = firstCharIndex + index1;
+  // Set the new caret position to the first column of the current line
+  textarea.setSelectionRange(movedIndex, movedIndex);
+}
+
+/**getCursorHorizonPosition()과 같은 함수. 리턴값만 많음.*/
+function getCursorPosition() {	//getCursorHorizonPosition()과 같은 함수. 리턴값만 많음.
+  const textarea = document.getElementById('code1');
+  const cursorIndex = textarea.selectionStart;
+
+  // Get the current line and column number
+  const textBeforeCursor = textarea.value.substring(0, cursorIndex);
+  const lines = textBeforeCursor.split('\n');
+  const currentLine = lines.length;
+  const currentColumn = lines[lines.length - 1].length + 1;
+
+  return {
+    index: cursorIndex,
+    line: currentLine,
+    column: currentColumn
+  };
+}
+
 
 // textarea에서, 선택된 텍스트를 반환 
 function getSelectedTextFromTextarea(textareaElement) {
@@ -1213,8 +1267,28 @@ window.addEventListener("keydown", (e) => {
 		
 		setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
 		setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
+		setTextInput('kwd1', ""); // 1,3 삭제한다
+		setTextInput('kwd3', ""); // 1,3 삭제한다
+	} else if (e.key === "F9") {	/** textarea에서도, 단어추출 위하여 F9 키 */
+		const textarea1 = document.getElementById('code1');	  
+		const currentLine = getCaretLineNumber(textarea1)-1;
+		const single1 = getCaretLineText(textarea1, currentLine);
 		
+		const starting1 = getCursorHorizonPosition(textarea1);
+		const reg1 = /[a-zA-Z_0-9]+/;
+		// const index1 = findMatchFromIndex(single1, reg1, starting1);
+		//const index2 = findForwardMatchFromIndex(single1, reg1, starting1);		
+		const index1 = findBackwardMatchFromIndex(single1, reg1, starting1);
+		// console.log(single1.substring(index1),"매치");
+		moveCaretToFirstColumn(index1);	// 일단 현재 줄의 첫번째 컬럼으로 이동후, +index1.
+		
+		/** KWD 인풋 박스를 사용치 않으나, 아래 줄은 남겨본다.*/
+		setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
+		setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
+		setTextInput('kwd1', ""); // 1,3 삭제한다
+		setTextInput('kwd3', ""); // 1,3 삭제한다
 	}
+
   
 });
 
@@ -1245,6 +1319,146 @@ function findGrpMatches(inputString, eq1) {
 }
 
 
+/**
+aaa per|→ception← ccc
+문자열을 주어진 위치로부터 후방향으로 (, {, [, 등을 찾음.
+해당 줄 내에서의 열 위치(Index)를 리턴한다.
+*/
+function findForwardMatchFromIndex(str, regex, startIndex) {
+  const lastIndex = str.length - 1; //  문자열 마지막 인덱스를 기록 후 Iterate.
+  
+  for (let i = startIndex; i < str.length; i++) {  // Iterate in reverse order
+	const match = str.substring(i, str.length-1).match(regex);
+
+    if (match) {
+		// console.log(match.index, "포워드 매칭fwd");
+		// console.log(match.length, "포워드 매칭길이fwd");
+		// console.log(match[0], "포워드 매칭 contentwd");
+      return match.index;	// 매치 스트링이 아니라 인덱스를 반환.
+    }
+  }
+  return startIndex;//-1;	// 아무것도 없으면 그냥 제자리(start지점)
+}
+
+/**
+JSFIDDLE? 에서 간소화 됨!!!. FWD 함수도 필요 없게 되었음
+aaa →per←|ception ccc
+문자열을 주어진 위치로부터 거슬러 (, {, [, 등을 찾음.
+해당 줄 내에서의 열 위치(Index)를 리턴한다.
+*/
+function findBackwardMatchFromIndex(str, regex, startIndex) {
+  for (let i = 0; i <= startIndex; i++) {
+		const match = str.substring(i, str.length-1).match(regex);
+    //console.log(str.substring(i,str.length-1));
+    //console.log(i,match[0].length);
+    const invader = i+match[0].length;
+    
+    // let tf = (invader > startIndex);    
+    // if (tf) console.log("인베이딩B(i+b):",match[0].length);
+    // if (!tf) console.log("NO _____:",match[0].length);
+
+    //console.log('닿는가?',tf);
+
+    if (match && match.index==0 && invader>startIndex) { // 이것/저것 재는 것이, 어떤 의미인지 머리로는 잘 모른다는 맹점 있음.(연산의 의미)
+		console.log(match[0], "백워드 매칭 BWD");
+		return i;//match.index;	// 매치 스트링이 아니라 인덱스를 반환. match.idx는 상대좌표라 쓸모가 없음. i가 순환하던 식별자이므로, 리턴.
+    }
+  }
+  return startIndex;//-1;	// 아무것도 없으면 그냥 제자리(start지점)
+}
+
+
+/**
+JSFIDDLE? 에서 간소화 시도 필요.
+aaa →per←|ception ccc
+문자열을 주어진 위치로부터 거슬러 (, {, [, 등을 찾음.
+해당 줄 내에서의 열 위치(Index)를 리턴한다.
+*/
+function findMatchFromIndex(str, regex, startIndex) {
+  let lastMatch = -1;	// 기본으로 0이 될 것임.(1번 열)
+
+  let succMatch = [null, null];	// t/f/null 중 하나를 가질 수 있다.
+  let succIdx = [-1, -1];
+  
+  for (let i = startIndex; i >= 0; i--) {  // Iterate in reverse order
+
+    const match = str.substring(i, startIndex + 1).match(regex);
+
+    if (match != null && match.index === 0) {	// 정확하게 그 지점에서 매칭 할 때,
+		
+		succMatch.unshift(true); // [4, 1, 2, 3]
+		succMatch.pop();// [4, 1, 2]
+		
+		succIdx.unshift(i);
+		succIdx.pop();
+		
+		cl(i, match.index);
+		cl(match[0], "MATCHED");
+		cl(succMatch, succIdx);
+		
+		lastMatch = i;  // Store the last found match
+
+    } else {// 비껴서 매칭하거나, 안 맞을 때는 그냥 FALSE이다.
+		
+		succMatch.unshift(false); // [4, 1, 2, 3]
+		succMatch.pop();// [4, 1, 2]
+		
+		succIdx.unshift(i);
+		succIdx.pop();
+
+		cl(i, "낫 UNMATCHED");
+		cl(succMatch, succIdx);
+
+		if (succMatch[0] === false && succMatch[1] === true) {
+			console.log("** Final:",match[0]);
+			lastMatch = succIdx[1];
+			return lastMatch;
+		} //else if (i === 0 && succMatch[0] === true) {
+	
+	}
+	
+  }
+
+  if (-1 === lastMatch) {
+	console.log("Look Back BUT No MATCH 1334");	  
+	return startIndex;	// 발견하지 못하면, 받은 인덱스 그대로 리턴해, 커서가 안움직이게 함.
+  }
+
+  return lastMatch;
+}
+
+
+/* function findMatchFromIndex(str, regex, startIndex) {
+  let lastMatch = -1;	// 기본으로 0이 될 것임.(1번 열)
+
+  for (let i = startIndex; i >= 0; i--) {  // Iterate in reverse order
+    // cl(i,str.substring(i, startIndex + 1));
+    const match = str.substring(i, startIndex + 1).match(regex);
+    if (match) {
+	  console.log(match, i);
+	  lastMatch = i;  // Store the last found match
+      break;  // Stop iterating once a match is found
+    }
+  }
+
+  if (-1 === lastMatch) {
+	console.log("Look Back BUT No MATCH 1334");	  
+	return startIndex;	// 발견하지 못하면, 받은 인덱스 그대로 리턴해, 커서가 안움직이게 함.
+  }
+
+  return lastMatch;
+}
+ */
+
+/* function findMatchFromIndex(str, regex, startIndex) {
+  const match = str.substring(0, startIndex + 1).match(regex);
+  console.log("매치파인드: ", match.index);
+  console.log("매치파인드: ", match);
+  return match ? match.index : -1;
+}
+ */  
+
+
 /** 문자열을 입력받아 3개로 나눈다.
 */
 function makeThreeStrings(str, ii, len0) {
@@ -1259,24 +1473,6 @@ function makeThreeStrings(str, ii, len0) {
 	return [left1, mid1, right1];
 }
 
-
-
-/* function refineEditableDiv2(content, reg1) {
-    // Create HTML with different colors for 'red' and other words
-	const match = content.match(reg1, 'g');
-	if (match) {
-		console.log(match[1], " GOOD매치됨 매치원:👍");
-		console.log(match[1].index, " 인덱스가 반드시 있을 것, GOOD매치됨 매치원:👍");
-		debugger;
-		console.log(content, "(원본) 남바2 IN");
-		return '<span style="color: orange;">' + match[1] + '</span>';
-	} else {
-		console.log(match, "아무것도 매치되지 않음. NULL... is MATCH");
-		return '<span style="color: black;">' + content + '</span>';
-	}
-}
- */
- 
 
 
 
