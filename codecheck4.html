@@ -1,12 +1,14 @@
 <html>
 <head>
+
 <title>
-Code Checker [4]
+ZD NET - A.I. Section _ Code Checker [4]
 </title>
 
 <script src='cookie.js'>
 </script> 
 <link rel = "icon" href="./codecheck4.png" type="image/x-icon">
+<link rel = "icon" href="./dummy.png" type="image/x-icon">
 </head>
 
 
@@ -20,10 +22,34 @@ input {
   font-family: Tahoma, 'Malgun Gothic';
 }
 
-
-#code1 { 
+.inkey {
+	font-size: 12px;
+	margin: 2px auto;
 	background-color: #121212;
 	color: #efefef;
+	font-family: Carlito, 'Malgun Gothic';
+}
+
+textarea {
+	background-color: #121212;
+  
+	font-size: 14px; 
+	font-family: 'Carlito';
+    line-height: 21px; 
+	tab-size:2;
+}
+
+#code2 {
+	color: #efef00;
+	height: 300px;
+	width:100px;
+	
+	 overflow:scroll;
+}
+
+#code1 { 
+	background-color: #121222;
+	color: #E3A300;
   
 	font-size: 16px; 
 	font-family: 'Consolas';
@@ -33,12 +59,8 @@ input {
 	tab-size:2;
 }
 
-/*
-font-family: Tahoma, 'Malgun Gothic'
 
-<!-- text-wrap:unrestricted; -->
-    <!-- /*white-space: pre-wrap;  Enable text wrap */	 -->
-*/
+
 
 #code1 {
 	width:600px;
@@ -88,12 +110,58 @@ select {
 	border-radius: 4px;
 }
 
+#def4 { /* 리턴 값 나열 버튼들의 스타일 */
+	display: inline-block;
+	background-color: #9A7D0A;
+	font-size: 12px;
+	max-width: 500px;
+	width: fit-content; /* or auto */
+	padding: 1px;
+	border-radius: 4px;
+}
+
+#editableDiv {
+	background-color: #484D0A;
+	font-size: 14px;
+	color:#DCDCDC;
+	font-family: Consolas, "Tahoma";
+	border: 1px dotted #010;
+	padding: 1px;
+}
+
+/* 라인과 고 버튼 평행 나열용 */
+#def5 {
+	display: inline-block;
+}
+
+.parallel1 {
+	display: inline-block;
+
+    align-items: center;
+    background-color: #444;
+    border: 1px dotted #010;
+    border-radius: 4px;
+    color: #fff;
+    fill: #000;
+    font-family: Verdana;
+    font-size: 16px;
+    font-weight: 400;
+    min-width: 40px;
+	min-height: 15px;
+    width: 401px;
+    outline: 0;
+    padding: 5px 5px;
+	margin: 3px;
+    text-decoration: none;
+}
+
 #horizon1 {
 	display: inline-block;
 	margin: 5px;
 	padding: 1px;
 	background-color: lightgray;
 }
+
 
 input[type="button" i] {
 	background-color: #222;
@@ -116,34 +184,9 @@ input[type="button" i]:hover {
 }
 
 
-/*
-.btnGotoRemark, .btnGotoNormal {
-  align-items: center;
-  background-color: #222;
-  border: 1px solid #000;
-  box-sizing: border-box;
-  color: #fff;
-  display: inline-flex;
-  fill: #000;
-  font-family: "Farfetch Basis","Helvetica Neue",Arial,sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  letter-spacing: -.8px;
-  min-width: 140px;
-  max-width: none;
-  width: auto;
-  outline: 0;
-  padding: 3px 5px; /* top-down and left-right */
-  text-align: center;
-  text-decoration: none;
-  touch-action: manipulation;
-// NOT - USED
-}*/
-
-
 button {
     align-items: center;
-    background-color: #444;
+    background-color: #744;
     border: 1px solid #000;
     border-radius: 4px;
     color: #fff;
@@ -159,6 +202,7 @@ button {
     text-align: center;
     text-decoration: none;
 }
+
 button:hover {
   background-color: #552;
 }
@@ -175,16 +219,6 @@ button:hover {
 .btnCalling:hover {
 	background-color:#a06b12;
 }
-
-.btnGotoRemark {
-  background-color: #222;
-  color: #404040;
-}
-.btnGotoRemark:hover {
-	background-color:#302b02;
-}
-
-
 
 .btnReturn {
 	background-color:#f0a911;
@@ -203,10 +237,31 @@ button:hover {
 	background-color:#d05b12;
 }
 
+/* 버튼의 흐릿 표시용 */
+.btnGotoRemark {
+  background-color: #222;
+  color: #535325;
+}
+.btnGotoRemark:hover {
+	background-color:#453105;
+}
+
+
 
 /*함수정의 찾기부/보여주기부는 배경색 일치해야. 현 색은 Moccasin */
 .definia {
 	background-color: #3B0000;
+	color: #ee0;
+}
+
+.definiaSteps {
+	background-color: #773601; /* 호출도는: 오렌지 바탕 */
+	color: #ee0;
+	/*border-left: 8px solid #a04610;*/
+}
+
+#description1 {
+	background-color: #503030; /* 호출도는: 오렌지 바탕 */
 	color: #ee0;
 }
 
@@ -248,16 +303,7 @@ button:hover {
 
 </style>
 
-<!-- button {
-  background-color: #222;
-  border-style: none;
-  color: #fff;
-}
 
-button:hover {
-	background-color: #552;
-}
- -->
 <script>
 // 전역 선언
 var gFuncName1 = 'None Function yet';
@@ -268,6 +314,8 @@ var gFuncName1 = 'None Function yet';
 <script src='codecheck4.js'>
 
 </script>
+
+<div> <img src="dummy.png" height=200px onclick="this.style.height='1000px';" oncontextmenu="this.style.height='400px';">  </div>
 
 <div> <img src="codecheck4.png" height=50px> <img src="number2.png" height=50px> Code Check 2 (June 2022~) </div>
 
@@ -282,38 +330,56 @@ var gFuncName1 = 'None Function yet';
 <input id="goto_line" type="text" size=9 value="-1" onclick="this.focus(); this.select();" placeholder="Goto Line"><input type="button" onclick="gotoLine();" value="Go to Line" title="라인으로 간다">
 </div>
 
-
-<div id='prevFoo' class='alarm2'>
-Prev Foo
+<div class='reserved'>
+	<div id='prevFoo' class='parallel1'>	Prev Foo	</div>
+	<button id="btnPrevFoo" data-line-num=-3999 onclick="gotoLine_ByMeta2('btnPrevFoo');">Go! Begining ↥↥↥</button>
 </div>
 
+<div>
 <textarea id='code1' rows=20 cols=60>
 { abc } 
 
-ham3();
-ham4(a,b,c);
-
-function ham4(i1, i2) {
-	trop down;
+// 현 커서 위치에서 뒤로간 함수 선언문의 위치 (즉, 대부분은 커서가 속한 함수 위치)
+function getNearBackFunction(datasetProperties, curLine) {
+	if (!(datasetProperties instanceof Array)) {
+	throw new Error('Invalid datasetProperties provided');
+	}
+	// 뒤에서부터 거꾸로 찾는다. 현재 줄보다 작은 줄번호가 첫번째로 나오면, 바로 리턴한다.
+	let matchingKey = null;
+	for (let i = datasetProperties.length - 1; i >= 0; i--) {
+	  if (Number(datasetProperties[i].value) < curLine) {
+		matchingKey = datasetProperties[i].key;
+		const matchingLineNumber = Number(datasetProperties[i].value);		
+		return { key: matchingKey, index: i, lineNumber: matchingLineNumber };	
+		// break;
+	  }
+	}
+	//return matchingKey;	// key is actually a Line Number.
 }
 
-function foo1(i1, i2) {
-	trop down;
+function fo3() {
 }
 
-foo1(10,11);
-foo1(14,15);
-foo1();
-
-
-btnMakeGrid.addEventListener('click', () => {
 
 </textarea>
 
+<div id='def4'>
+
+<!-- <input type=text value="" class=inkey id=kwd1 size=20 onclick="this.selectionStart = this.value.length; this.selectionEnd = this.value.length;">
+<input type=text value="Center1" class=inkey id=kwd2 size=45 onclick="this.focus(); this.select();">
+<input type=text value="" class=inkey id=kwd3 size=20 onclick="this.selectionStart = this.value.length; this.selectionEnd = this.value.length;">
+<input type=text value=100 class=inkey id=kwd_iterator size=2>
+ -->
+<div title='에디터에서 F8'>♺ Trace Var(F9)</div> <!-- 우측  -->
+<div title='이 위에서 F9' id="editableDiv" contenteditable="true">Edit</div>
+</div>
+
+</div>
 
 
-<div id='nextFoo' class='alarm2'>
-Next Foo
+<div class='reserved'>
+<div id='nextFoo' class='parallel1'>Next Foo</div>
+<button id="btnNextFoo" data-line-num=-3999 onclick="gotoLine_ByMeta2('btnNextFoo');">Go! End ↧↧↧</button>
 </div>
 
 <label>
@@ -338,8 +404,11 @@ Alarm1 Area<br>
 <div>
 <!-- <input type=button onclick="runRegBigs();" value="Store lets to Listbox" title="JS:runRegBigs - runRegex();"> -->
 
+
 <input type=button onclick="generateSelectOptions(0);" value="📰Show! 함수선언들" title="JS:();">
 <input type=button onclick="generateSelectOptions(1);" value="📰Show! 이벤트 반응함수" title="JS:();">
+<input type=button onclick="constructSelectBox();" value="📰 함수 내 호출도圖" title="JS:();">
+
 
 
 
@@ -348,7 +417,8 @@ Alarm1 Area<br>
 
 </div>
 
-<label for="lstFuncDefinitions">Func Definitions</label><br> <!-- funcDefList -->
+<label for="lstFuncDefinitions">Func Definitions</label><br>
+<label id="description1">List Description1</label><br> <!-- funcDefList -->
 <div id='def1'>
 <!-- <label for="함수 정의 목록 funcdeflist">funcDefList</label> -->
 
