@@ -27,67 +27,19 @@ document.addEventListener("DOMContentLoaded", function () {
 	// 리팩토링용 편집 박스.
 	const editDiv1 = document.getElementById('editableDiv');
 	editDiv1.addEventListener('keydown', function(event) {
-		// F6 키를 여러번 눌러 REFINE 할 수 있게 한다.(F8로 하면 작동하지 않음)❌❌❌
-		if (event.key === "F9") {
-			const kwd2 = document.getElementById('kwd2').value;
-			const iterator = document.getElementById('kwd_iterator');
-			// const start = Number(document.getElementById('kwd_iterator').value);
-			const start = getIteratorValue();
-			
-			
-			// 통일성을 위해 매치[1]에 대한 괄호를 씌운다.
-			const eq1 = /.+\s*= (.+);/;
-			const eq2 = /=(.+);/;	// 등식에서 우측 Catch.
-			const eq3 = /\((.+)\)/;	// 등식에서 괄호 캐치.
-			const eq4 = /\[(.+)\]/; // 꺽쇠[] 내부가 매치1.
-			const eq5 = /\[(.+)\]/; // 꺽쇠[] 내부가 매치1.
-			//const regFive = [ eq1, eq2, eq3, /\".+\"/, /\[.+\]/ ];
-			const regFive = [ eq1, eq2, eq3, eq4, /\"(.+)\"/ ];
-			let i = -1;
-			for (i=start; i<regFive.length; i++) {
-				const res = findGrpMatches(kwd2, regFive[i]);
-				
-				//if (Array.isArray(res) && res.length == 0) {
-				if (null == res || res.length == 0) {
-				  console.log("결과값 없음. 식:",i);	// 추출된 식 없음, 3개 입력박스 업데이트 불필요.
-				  continue;	// 아예 결과가 없으니 다음 i식으로 간다.
-				} else if (undefined == res.capturedGroup) {
-					// 캡쳐 그룹 1번(match[1])이 정해지지를 않았다면...:undefined
-					console.log("부-결과값 없음. 식:",i);	
-					continue; // 역시 결과는 없는 것. (Sub-Result가 없다는 것)
-				}
-				// cl( res.capturedGroup );
-				// 정규식 찾은 값은 원본 기준 인덱스라서, 원본 라인을 잘라야 한다.
-				const insect1 = makeThreeStrings(kwd2, res.index, res.capturedGroup.length);
-				//cl(insect1 );
-				
-				if (insect1[1] === kwd2) {
-					console.log("같아서 업데이트 불필요 상황 i:",i);
-					continue; // 다음 i로 다른 식을 고른다. 다음 i식으로 간다.
-				}
-
-				console.log(`${i}: 정규식 ${regFive[i]}`);
-				
-				appendTextInput('kwd1', insect1[0]);	// 좌우측엔 쌓아놓고, 중간값은 새로 넣는다
-				setTextInput('kwd2', insect1[1]);
-				prependTextInput('kwd3', insect1[2]);
-				
-				break;
-			}
-			iterator.value = i;	// 종료시 값
-			
-			if (i === regFive.length) {
-				setTextFlashInDiv('verbose1', '계수 i가 최대값 도달, 모두 찾음. [TERMINATED]');
-			}
-			
-			// if (i == 2) {
-				// setTextFlashInDiv('verbose1', '계수 i가 최대값에 도달');
-			// }
-			
-		} else if (event.key == "`") {	// 이 버튼을 눌러 변형된 문자열을 APPLY
-			cl("APPLY! refined TEXT");
-		}
+		// 에디트 DIV는 RESERVED로 남겨놓는다. 혹시몰라서
+		// F9를 여기서 좌우 분리용으로 처리.
+		
 	});
+	
+/* 	const kwd2 = document.getElementById('kwd2');
+	kwd2.addEventListener('keydown', function(event) {
+		if (event.key === "@") {	/** textarea에서도, 단어추출 위하여 F9 키 
+			cl("YOU PRESSED @@ ");
+			// 여기서 좌우를 갈라 , kwd1,3으로 분산시킨다.
+			event.preventDefault(); // Prevent the default behavior (e.g., inserting the "@" character)
+		}
+	}); */
 	
 });
 
@@ -393,8 +345,8 @@ function getCursorHorizonPosition(textarea) {
   return currentColumn;
 }
 
-/**텍스트 영역에서 현재 줄의 첫 번째 열로 캐럿을 이동 */
-function moveCaretToFirstColumn(index1) {	// index1: 0 이 기본값이고, 3 이면 컬럼 3으로 이동.
+/**텍스트 영역에서 현재 줄의 첫 번째 열로 캐럿을 이동 후 INDEX1 만큼 증가.*/
+function moveCaretToColumn(index1) {	// index1: 0 이 기본값이고, 3 이면 컬럼 3으로 이동.
   const textarea = document.getElementById('code1');
   const cursorPosition = getCursorPosition();
   // Calculate the index of the first character of the current line
@@ -1213,9 +1165,9 @@ function extractParameters(functionCallString) {
 window.addEventListener("keydown", (e) => {
 
 	if (e.key === "F2") {
+		/** F2이벤트를,유사한 RawBackDisclosure() 함수로 대체할 수 있는지 봐야한다 */
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1);
-		// cl("현 라인", currentLine);
 		
 		const backLam4 = getRawBackLambda(textarea1, currentLine);
 		const backFoo4 = getRawBackFunction2(textarea1, currentLine);	// 시작줄 뿐만 아니라 함수명, 파라메터들 리턴함.
@@ -1260,7 +1212,6 @@ window.addEventListener("keydown", (e) => {
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1)-1;
 		const single1 = getCaretLineText(textarea1, currentLine);
-		// const doneContent = refineEditableDiv(single1);
 		
 		const editDiv1 = document.getElementById('editableDiv');
 		editDiv1.innerHTML = single1;
@@ -1269,24 +1220,56 @@ window.addEventListener("keydown", (e) => {
 		setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
 		setTextInput('kwd1', ""); // 1,3 삭제한다
 		setTextInput('kwd3', ""); // 1,3 삭제한다
-	} else if (e.key === "F9") {	/** textarea에서도, 단어추출 위하여 F9 키 */
+	} else if (e.key === "F9") {	/** MAIN textarea에서도, 단어추출 위하여 F9 키 */
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1)-1;
 		const single1 = getCaretLineText(textarea1, currentLine);
 		
 		const starting1 = getCursorHorizonPosition(textarea1);
 		const reg1 = /[a-zA-Z_0-9]+/;
-		// const index1 = findMatchFromIndex(single1, reg1, starting1);
-		//const index2 = findForwardMatchFromIndex(single1, reg1, starting1);		
-		const index1 = findBackwardMatchFromIndex(single1, reg1, starting1);
-		// console.log(single1.substring(index1),"매치");
-		moveCaretToFirstColumn(index1);	// 일단 현재 줄의 첫번째 컬럼으로 이동후, +index1.
+		
+		/** 백워드 매치만 있으면 된다. (No FWD) */
+		//const index1 = findBackwardMatchFromIndex(single1, reg1, starting1);
+		const [index1, matchF] = findBackwardMatchFromIndex(single1, reg1, starting1);
+		// console.log( single1[starting1],"이 시작점");
+		// console.log( "************************ MATCH:: ", matchF);
+
+		moveCaretToColumn(index1);	// 일단 현재 줄의 첫번째 컬럼에서 +index1.
+		
+		/**single1 즉 한줄만 검색하는 것에서 벗어나, 전체를 찾을 수 있어야 한다.?*/
+		/** cGP: 현재의 글로벌 커서위치 */
+		const rawInfo = getRawBackDisclosure(textarea1, currentLine);
+		const backFoo4 = (rawInfo.lineNum-1 >= 0) ? rawInfo.lineNum-1 : 0;
+		// getRawBackDisclosure();
+		setTextFlashInDiv('verbose1', rawInfo.functionName);
+		//실제 줄로 가본다. 동작함
+		// gotoLine2(backFoo4);
+		
+		// 다 찾는다 '더블클릭된 키워드'를...
+		resetTextInDiv('editableDiv');
+		for (let i=backFoo4; i <= currentLine; i++) {
+			const single1 = getCaretLineText(textarea1, i);
+			const tabs = countTabsAtBeginning(single1);// 탭만 추출.
+			const leads = generateSpaces(tabs);	// given number of tabs.
+
+			//let fwdCol = findForwardMatchFromIndex(single1, reg1, 0);
+			// cl("NONO");
+			let [fwdCol, fwdWord] = findForwardMatchFromIndex(single1, matchF, 0);
+			//cl("이줄 포워드 결과:", fwdCol);
+			if (fwdCol > -1) {
+				const leads2 = String(i+1) + ":" + leads;
+				// console.log(`${fwdCol} 출력: ${single1}`);
+				setColorTextEditDiv(leads2, single1, fwdCol, fwdWord.length, '#DD5500'); 
+			}
+
+		}
+		
 		
 		/** KWD 인풋 박스를 사용치 않으나, 아래 줄은 남겨본다.*/
-		setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
-		setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
-		setTextInput('kwd1', ""); // 1,3 삭제한다
-		setTextInput('kwd3', ""); // 1,3 삭제한다
+		// setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
+		// setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
+		// setTextInput('kwd1', ""); // 1,3 삭제한다
+		// setTextInput('kwd3', ""); // 1,3 삭제한다
 	}
 
   
@@ -1331,40 +1314,42 @@ function findForwardMatchFromIndex(str, regex, startIndex) {
 	const match = str.substring(i, str.length-1).match(regex);
 
     if (match) {
-		// console.log(match.index, "포워드 매칭fwd");
-		// console.log(match.length, "포워드 매칭길이fwd");
 		// console.log(match[0], "포워드 매칭 contentwd");
-      return match.index;	// 매치 스트링이 아니라 인덱스를 반환.
+		//cl(match.index, "매인?");
+      return [match.index, match[0]];	// 매치 스트링이 아니라 인덱스를 반환.
+	  // 포워드 매치는 match.index 리턴, 백워드는 substring을 써서 거꾸로 가서 그런지,... 좀 다르다.
     }
   }
-  return startIndex;//-1;	// 아무것도 없으면 그냥 제자리(start지점)
+  //return startIndex;//-1;	// 아무것도 없으면 그냥 제자리(start지점)
+  return [-1, 'None_1323']; // 아무것도 없으면 없다고 명시.(제자리는 캡쳐되므로 안됨)
 }
 
 /**
 JSFIDDLE? 에서 간소화 됨!!!. FWD 함수도 필요 없게 되었음
 aaa →per←|ception ccc
 문자열을 주어진 위치로부터 거슬러 (, {, [, 등을 찾음.
-해당 줄 내에서의 열 위치(Index)를 리턴한다.
+해당 줄 내에서의 열 위치(Index)와 찾은 단어를 리턴한다.
 */
 function findBackwardMatchFromIndex(str, regex, startIndex) {
   for (let i = 0; i <= startIndex; i++) {
 		const match = str.substring(i, str.length-1).match(regex);
     //console.log(str.substring(i,str.length-1));
-    //console.log(i,match[0].length);
-    const invader = i+match[0].length;
+    
+	// match가 안 나오면, 침범 계수 우측은 당연히 없음.
+    const invader = (match != null) ? i+match[0].length : -99;
     
     // let tf = (invader > startIndex);    
     // if (tf) console.log("인베이딩B(i+b):",match[0].length);
     // if (!tf) console.log("NO _____:",match[0].length);
 
-    //console.log('닿는가?',tf);
-
     if (match && match.index==0 && invader>startIndex) { // 이것/저것 재는 것이, 어떤 의미인지 머리로는 잘 모른다는 맹점 있음.(연산의 의미)
 		console.log(match[0], "백워드 매칭 BWD");
-		return i;//match.index;	// 매치 스트링이 아니라 인덱스를 반환. match.idx는 상대좌표라 쓸모가 없음. i가 순환하던 식별자이므로, 리턴.
+		//return i;
+		return [i, match[0]]; // 그 문자열 내의 인덱스와 찾아낸 Match Word를 리턴한다.
     }
   }
-  return startIndex;//-1;	// 아무것도 없으면 그냥 제자리(start지점)
+  //return startIndex;//-1;	// 아무것도 없으면 그냥 제자리(start지점)
+  return [startIndex, "(No Word!)"];
 }
 
 
@@ -1476,32 +1461,6 @@ function makeThreeStrings(str, ii, len0) {
 
 
 
- 
-// Function to update the content of the editable DIV with different colors
-/**
-이 함수는 공백으로 나눈 후에야 처리함.
-*/
-function refineEditableDiv(content) {
-    let bFound = false;	// 한번이라도 찾았는지를 체크.
-    var redRegExp = /\(.+\)/;    
-
-    // Split the content into words
-    var words = content.split(' ');
-
-    // Create HTML with different colors for 'red' and other words
-    var htmlContent = words.map(function(word) {
-		if (redRegExp.test(word)) {
-			return '<span style="color: orange;">' + word + '</span>';
-			bFound = true;
-		} else {
-			return '<span style="color: black;">' + word + '</span>';
-		}
-	}).join(' ');
-
-	if (bFound)
-		return htmlContent;
-	return null;
-}
 
 
   
@@ -1723,6 +1682,56 @@ function setTextFlashInDiv(divId, text) {
   }
 }
 
+/** DIV에 색깔 텍스트 출력 
+ii ; 줄 번호
+lead ; 보통, tab들.
+text ; 원본, (index-length조합); 하이라이트할 단어, color; 색깔.
+*/
+function setColorTextEditDiv(leadString, text, startIndex, length, color) {
+  // Create spans for the parts before, during, and after the specified substring
+  const before0 = document.createTextNode(leadString);
+  const before = document.createTextNode(text.substring(0, startIndex));
+  const target = document.createElement('span');
+  target.style.color = color;
+  target.style.backgroundColor = "#353500";
+  //target.style.backgroundColor = (bgi % 2 ===0) ? "#353500" : "#653500";
+  target.appendChild(document.createTextNode(text.substring(startIndex, startIndex + length)));
+  const after = document.createTextNode(text.substring(startIndex + length));
+
+  // Append the spans to the output div
+  const outputDiv = document.getElementById('editableDiv');
+
+  outputDiv.appendChild(before0);
+  outputDiv.appendChild(before);
+  outputDiv.appendChild(target);
+  outputDiv.appendChild(after);
+  
+  const lf = document.createElement('span');
+  //lf.style.backgroundColor = "#151500";
+  lf.appendChild(document.createTextNode("▐"));
+  lf.style.color  = "#454545";
+  outputDiv.appendChild(lf);
+ 
+  const lineBreak = document.createElement('br');
+  outputDiv.appendChild(lineBreak);
+}
+
+// Number of tabs at the beginni
+function countTabsAtBeginning(inputString) {
+  // Use a regular expression to match tabs at the beginning of the string
+  //const matches = inputString.match(/^\t*/);
+  const matches = inputString.match(/^\t*/);
+
+  // If there are matches, return the length of the matched substring
+  // Otherwise, return 0 indicating no tabs at the beginning
+  return matches ? matches[0].length : 0;
+}
+
+// returns a string with the specified number of spaces. 
+function generateSpaces(count) {
+  return "_".repeat(count);
+  //return "&nbsp;".repeat(count);
+}
 
 
 // 로컬 스토리지 수동으로 지우는 법 화면. https://postimg.cc/8sMqqsP4
