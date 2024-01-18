@@ -318,7 +318,7 @@ function getCaretLineText(textarea, row) {
 	return lines[row];
 }
 
-// 현재 커서가 위치한 곳의 줄번호 표시
+// 현재 커서가 위치한 곳의 줄번호 표시 (0이 아닌 1부터 시작하는 인덱스)
 function getCaretLineNumber(textarea) {
   let caretPosition = textarea.selectionStart;
   let lineNumber = 1;
@@ -333,6 +333,118 @@ function getCaretLineNumber(textarea) {
   
   return lineNumber;
 }
+
+// LINK 버튼을 삭제한다 (매번 새로 만들기 전에 삭제하는 것)
+function removeLinkButton(divName) {
+  const container = document.getElementById(divName);
+	// cl("버튼잇음");
+	
+  if (container) {
+    const button = container.querySelector("button");
+	// cl("버튼잇음");
+    if (button) {
+      button.remove();
+    } else {
+      console.error("Button not found in the specified div.");
+    }
+  } else {
+    console.error("Container div not found.");
+  }
+}
+
+
+// LINK 버튼 제네레이트 하기
+function generateLinkButton(link1, divName) {
+	const button = document.createElement("button");
+	const maxLength = 20;
+	const link2 = (link1 == null) ? '12345Null' : link1;
+	const link3 = link2.slice(5, maxLength);
+	button.textContent = "_"+link3;
+
+	// Set button click event listener
+	button.addEventListener("click", function() {
+	  window.open(link1, "_blank"); // Open link in a new tab
+	});
+
+  // Ensure the target DIV exists before appending
+  const targetDiv = document.getElementById(divName);
+  if (targetDiv) {
+    targetDiv.appendChild(button);
+  } else {
+    console.error("DIV with name", divName, "not found.");
+  }
+}
+
+
+function findHttpMatches(text) {
+	if (undefined == text)
+		return null;	// 주어진 텍스트 자체가 없을 때는 NULL (e.g. 주로 화면 맨 위에서 찾을 때 text가 undefined 임.
+	
+	const httpRegex = /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)/gi;
+
+	const matches = text.match(httpRegex);
+	// Return an empty array if no matches (원래는 NULL)
+	// return matches || [];
+	return matches ? matches[0] : null; // Return the first match or null if none
+}
+
+
+// F3 KEYDOWN시 ...
+function showUpperRemarks() {
+	const textarea1 = document.getElementById('code1');	  
+	const caretLine = getCaretLineNumber(textarea1);
+	const currentLine = caretLine - 1; // 0 부터 시작하는 인덱스로...
+	let remark9, http9 = getUpperRemarkLine(textarea1, currentLine); // rems=[a,b,c] 배열.
+	
+	removeLinkButton("prevComment");
+	generateLinkButton(http9, "prevComment");
+	
+	setTextFlashInDiv('verbose1', "F3 반응 주소:"+http9);
+}
+
+/** 커서로부터 윗쪽 (주로 함수 선언부의) 주석단 블럭 리턴 
+remark1과 http 주소 리턴.
+*/
+function getUpperRemarkLine(textarea1, currentLine) {
+	let rems = [];	// 최대 3줄?
+
+	// 함수 선언 위 주석도 찾는 단축키.
+	//const textarea1 = document.getElementById('code1');	  
+	//const caretLine = getCaretLineNumber(textarea1);
+	//const currentLine = caretLine - 1; // 0 부터 시작하는 인덱스로...
+
+	/**single1 즉 한줄만 검색하는 것에서 벗어나, 전체를 찾을 수 있어야 한다.?*/
+	/** cGP: 현재의 글로벌 커서위치 */
+	const rawInfo = getRawBackDisclosure(textarea1, currentLine);
+	const backFoo4 = (rawInfo.lineNum-1 >= 0) ? rawInfo.lineNum-1 : 0;
+	const remarkLine = backFoo4 - 1; // -1 하여 주석 줄로...
+	const single1 = getCaretLineText(textarea1, remarkLine);
+	const single2 = getCaretLineText(textarea1, remarkLine-1);
+	const single3 = getCaretLineText(textarea1, remarkLine-2);
+	
+	// cl("1",single1);
+	// console.log('2',single2);
+	// cl("3",single3);
+	
+	const http1 = findHttpMatches(single1);
+	const http2 = findHttpMatches(single2);
+	const http3 = findHttpMatches(single3);
+	
+ 	// let http9 = null;
+	// if (null != http3) 
+		// http9 = http3;
+	// else if (null != http2) 
+		// http9 = http2;
+	// else if (null != http1) 
+		// http9 = http1;
+ 	// cl(http1, "리턴전");
+	const http9 = http3 || http2 || http1 || null;
+ 
+	return single3 + single2 + single1, http9;
+	// return {remark1: single3 + single2 + single1, address1: http9};
+	// return { rem1:rems[0], rem2:rems[1], rem3:rems[2] };
+}
+
 
 /** 커서 열 위치 리턴 */
 function getCursorHorizonPosition(textarea) {
@@ -1166,17 +1278,8 @@ window.addEventListener("keydown", (e) => {
 
 	if (e.key === "F2") {
 		/** F2이벤트를,유사한 RawBackDisclosure() 함수로 대체할 수 있는지 봐야한다 */
-		const textarea1 = document.getElementById('code1');	  
-		const currentLine = getCaretLineNumber(textarea1);
-		
-		const backLam4 = getRawBackLambda(textarea1, currentLine);
-		const backFoo4 = getRawBackFunction2(textarea1, currentLine);	// 시작줄 뿐만 아니라 함수명, 파라메터들 리턴함.
-		
-		const lineLambda = backLam4.lineNum ?? -1999;	// 표시용으로서 실제 GOTO는 안하므로
-		const lineGefunc = backFoo4.lineNum ?? -1999;	// undefined 면 -1999값을 준다.
-
-		const backNumber = (lineLambda > lineGefunc) ? lineLambda : lineGefunc; // 더 아래(최근)인 줄번호를 가져온다.
-		const backNumberSt = (lineLambda > lineGefunc) ? lineLambda+": "+backLam4.functionName : lineGefunc+": "+backFoo4.functionName;
+		const rawInfo = getRawBackDisclosure(textarea1, currentLine);
+		const backNumberSt = rawInfo.lineNum + ":" + rawInfo.functionName;
 		
 		const nextFoo4 = getRawForthFunction(textarea1, backNumber);  	// 함수 끝줄
 		
@@ -1205,8 +1308,24 @@ window.addEventListener("keydown", (e) => {
 		//copyTextBlockToTextarea(block1, textarea2);
 		// 선택된 변수를 찾아주어야 한다.
 		const kwd1 = getSelectedTextFromTextarea(textarea1);
-		// console.log(kwd1, "탐색하기로 선택된 변수");
 		setTextFlashInDiv('verbose1', "탐색할 변수 "+ kwd1);
+		
+	} else if (e.key == "F3") { 
+		// 함수 선언 위 주석도 찾는 단축키.
+		const textarea1 = document.getElementById('code1');	  
+		const caretLine = getCaretLineNumber(textarea1);
+		const currentLine = caretLine - 1; // 0 부터 시작하는 인덱스로...
+		let remark9, http9 = getUpperRemarkLine(textarea1, currentLine); // rems=[a,b,c] 배열.
+		
+		removeLinkButton("prevComment");
+		generateLinkButton(http9, "prevComment");
+		
+		setTextFlashInDiv('verbose1', "F3 반응 주소:"+http9);
+		
+		// console.log("주석줄:",remark9);
+		// console.log("주소:",http9);
+		
+		e.preventDefault();	// 기본 F3키 루틴을 막는다.
 		
 	} else if (e.key === "F8") {	// F8키는 코드변경, 이름 변경에 사용된다
 		const textarea1 = document.getElementById('code1');	  
@@ -1216,10 +1335,8 @@ window.addEventListener("keydown", (e) => {
 		const editDiv1 = document.getElementById('editableDiv');
 		editDiv1.innerHTML = single1;
 		
-		setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
 		setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
-		setTextInput('kwd1', ""); // 1,3 삭제한다
-		setTextInput('kwd3', ""); // 1,3 삭제한다
+
 	} else if (e.key === "F9") {	/** MAIN textarea에서도, 단어추출 위하여 F9 키 */
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1)-1;
@@ -1231,7 +1348,6 @@ window.addEventListener("keydown", (e) => {
 		/** 백워드 매치만 있으면 된다. (No FWD) */
 		//const index1 = findBackwardMatchFromIndex(single1, reg1, starting1);
 		const [index1, matchF] = findBackwardMatchFromIndex(single1, reg1, starting1);
-		// console.log( single1[starting1],"이 시작점");
 		// console.log( "************************ MATCH:: ", matchF);
 
 		moveCaretToColumn(index1);	// 일단 현재 줄의 첫번째 컬럼에서 +index1.
@@ -1247,29 +1363,39 @@ window.addEventListener("keydown", (e) => {
 		
 		// 다 찾는다 '더블클릭된 키워드'를...
 		resetTextInDiv('editableDiv');
+		resetButtonsInDiv('def4');
+		
 		for (let i=backFoo4; i <= currentLine; i++) {
 			const single1 = getCaretLineText(textarea1, i);
 			const tabs = countTabsAtBeginning(single1);// 탭만 추출.
 			const leads = generateSpaces(tabs);	// given number of tabs.
 
 			//let fwdCol = findForwardMatchFromIndex(single1, reg1, 0);
-			// cl("NONO");
 			let [fwdCol, fwdWord] = findForwardMatchFromIndex(single1, matchF, 0);
 			//cl("이줄 포워드 결과:", fwdCol);
 			if (fwdCol > -1) {
 				const leads2 = String(i+1) + ":" + leads;
 				// console.log(`${fwdCol} 출력: ${single1}`);
+				
+				// 전역으로 editableDiv 를 사용한다.
 				setColorTextEditDiv(leads2, single1, fwdCol, fwdWord.length, '#DD5500'); 
+				
+				addButtonToDiv('def4', String(i+1), i+1);
 			}
 
 		}
 		
 		
 		/** KWD 인풋 박스를 사용치 않으나, 아래 줄은 남겨본다.*/
-		// setIteratorValue(0);	// 새 줄을 사용자가 선택하면, 반복계수를 0으로 초기화한다.
 		// setTextInput('kwd2', single1); // 첫 값(줄 전체)을 중앙부 '문자분열 박스'에도 둔다.
 		// setTextInput('kwd1', ""); // 1,3 삭제한다
 		// setTextInput('kwd3', ""); // 1,3 삭제한다
+	} else if (e.keyCode === 48 && e.altKey) {	// alt0;설정의 Write/Read 로컬 스토리지.
+		// ReadLocalStorage();
+		// cl("READ");
+	} else {
+		// cl(e.keyCode);
+		// cl(e.altKey);
 	}
 
   
@@ -1343,8 +1469,7 @@ function findBackwardMatchFromIndex(str, regex, startIndex) {
     // if (!tf) console.log("NO _____:",match[0].length);
 
     if (match && match.index==0 && invader>startIndex) { // 이것/저것 재는 것이, 어떤 의미인지 머리로는 잘 모른다는 맹점 있음.(연산의 의미)
-		console.log(match[0], "백워드 매칭 BWD");
-		//return i;
+		// console.log(match[0], "백워드 매칭 BWD");
 		return [i, match[0]]; // 그 문자열 내의 인덱스와 찾아낸 Match Word를 리턴한다.
     }
   }
@@ -1492,6 +1617,26 @@ function resetTextInDiv(divId) {
   }
 }
 
+/** 특정 DIV 내의 모든 버튼을 제거하는 JavaScript의 함수 
+나중에, resetGoButtons, resetReturnerButtons 도 통합될 수 있다.
+*/
+function resetButtonsInDiv(divId) {
+  const targetDiv = document.getElementById(divId);
+
+  if (targetDiv) {
+    const buttons = targetDiv.getElementsByTagName('button');
+
+    // Convert HTMLCollection to an array and remove each button
+    Array.from(buttons).forEach(button => {
+      button.parentNode.removeChild(button);
+    });
+  } else {
+    console.error(`DIV with ID ${divId} not found.`);
+  }
+}
+
+
+
 /** 인풋 박스의 문자열 수정 하기 */
 function setTextInput(id, text) {
 	const input = document.getElementById(id);
@@ -1514,16 +1659,6 @@ function prependTextInput(id, text) {
 }
 
 
-/** 3분할 입력박스의 반복계수 지정
-*/
-function setIteratorValue(nn) {
-	const iterator = document.getElementById('kwd_iterator');
-	iterator.value = nn;
-}
-function getIteratorValue() {
-	const start = Number(document.getElementById('kwd_iterator').value);
-	return start;
-}
 
 
 /*
@@ -1681,6 +1816,31 @@ function setTextFlashInDiv(divId, text) {
     console.error(`Div with ID '${divId}' not found.`);
   }
 }
+
+/** 줄수에 대한 버튼을 주어진 DIV에 더한다 
+보통은 def4.
+*/
+function addButtonToDiv(divId, buttonName, line1) {
+  // Get the DIV element by its ID
+  const divElement = document.getElementById(divId);
+
+  // Create a button element with the given name
+  const buttonElement = document.createElement("button");
+  buttonElement.textContent = buttonName;  // Set the button text
+
+  // Optionally: Set a default type for the button
+  buttonElement.type = "button";  // You can change this if needed (e.g., "submit")
+
+  // Add the event listener to the button
+  buttonElement.addEventListener("click", function() {
+    gotoLine2(line1);  // Call the gotoLine2 function with the button name
+  });
+  
+  // Add the button to the DIV element
+  divElement.appendChild(buttonElement);
+}
+
+
 
 /** DIV에 색깔 텍스트 출력 
 ii ; 줄 번호
