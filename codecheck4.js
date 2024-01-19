@@ -3,6 +3,7 @@ const cl = (...args) => console.log(...args);
 
 let btnAddPointRoute;
 let blinkTimerId;	// 텍스트 영역의 깜빡임 상황 누적 기록용.
+let blinkTimerIdShort;	// 텍스트 영역의 깜빡임 상황 누적 기록용.
 
 
 
@@ -597,6 +598,7 @@ function generateString(numberOfCharacters) {
 // 라인 가기용 다이나믹 버튼 추가 
 // extraValue : 줄 번호.
 // 버튼이 들어갈 DIV는 정해져 있다.
+// https://postimg.cc/kVKzymb3
 function add_GoButton(id, label, extraValue, isRemark, param_count) {
 	// Create a new button element
 	var button = document.createElement('button');
@@ -1111,7 +1113,7 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 	isRemark = (isRemark === "true");	// boolean 식으로 바꾼다.	
 	const lineNum = selectedOption.dataset.lineNum;
 	
-	setTextInDiv('params1', lineNum + "줄번"); 
+	//setTextInDiv('params1', lineNum + "줄번"); 
 	setGotoLine(lineNum);	// 인풋 박스에 함수 정의부의 줄번호를 넣어준다.
 	
 	gotoLine2(lineNum);	// 함수정의로 스크롤 한다. (scrollToLineNumber()의 줄 이동만으로는 정확치 않으므로 해당 부분을 SELECTION을 해줌)
@@ -1151,8 +1153,11 @@ function generateSelectOptions(defOrLis) { // !!HTML_call
 			msgRemark = "주석부입니다" + isRemark;
 		}
 		
-		const msg1 = `${lineNum}: ?? 이 함수는 사용되지 않습니다. ${gFuncName1}' ?? FNF: Func NOT FOUND 893 ${msg2} 그리고 ${msgRemark}`;
-		setTextInDiv('params1', msg1);
+		//const msg1 = `${lineNum}: ?? 이 함수는 사용되지 않습니다. ${gFuncName1}' ?? FNF: Func NOT FOUND 893 ${msg2} 그리고 ${msgRemark}`;
+		const msg1 = `${gFuncName1}() 함수는 사용되지 않습니다. 그리고 ${msgRemark}`;
+		// setTextInDiv('params1', msg1);
+		setTextFlashIntervalDiv('params1', msg1);
+		// setTextFlashInDiv('verbose1', `${gFuncName1} Function NOT USED CURRENTLY...`);
 	}	
 	
 	
@@ -1277,11 +1282,15 @@ function extractParameters(functionCallString) {
 window.addEventListener("keydown", (e) => {
 
 	if (e.key === "F2") {
+		const textarea1 = document.getElementById('code1');	  
+		const currentLine = getCaretLineNumber(textarea1);
+
 		/** F2이벤트를,유사한 RawBackDisclosure() 함수로 대체할 수 있는지 봐야한다 */
 		const rawInfo = getRawBackDisclosure(textarea1, currentLine);
+		//return { lineNum:backNumber, backParameterType, functionName:backDisclosureName 		
 		const backNumberSt = rawInfo.lineNum + ":" + rawInfo.functionName;
 		
-		const nextFoo4 = getRawForthFunction(textarea1, backNumber);  	// 함수 끝줄
+		const nextFoo4 = getRawForthFunction(textarea1, rawInfo.lineNum);  	// 함수 끝줄
 		
 		resetTextInDiv('prevFoo');
 		resetTextInDiv('nextFoo');
@@ -1289,8 +1298,33 @@ window.addEventListener("keydown", (e) => {
 		setTextInDiv('prevFoo', backNumberSt);
 		setTextInDiv('nextFoo', nextFoo4);	// 끝지점이지만 다음 함수 위치 넣어주는 게 좋음
 
-		setMeta_Prev(backNumber);
+		setMeta_Prev(rawInfo.lineNum);	// previously: lineNum was backNumber.
 		setMeta_Next(nextFoo4);
+
+		/** A ROUTINE_F3 */
+		let remark9, http9 = getUpperRemarkLine(textarea1, currentLine); // rems=[a,b,c] 배열.
+		removeLinkButton("prevComment");
+		generateLinkButton(http9, "prevComment");
+	} else if (e.key == "F3") { /** COMMENT 찾아 보여주기 */
+		// 함수 선언 위 주석도 찾는 단축키==> F2에 통합.
+	
+
+		// const textarea1 = document.getElementById('code1');	  
+		// const caretLine = getCaretLineNumber(textarea1);
+		// const currentLine = caretLine - 1; // 0 부터 시작하는 인덱스로...
+
+		/** A ROUTINE_F3 */
+		// let remark9, http9 = getUpperRemarkLine(textarea1, currentLine); // rems=[a,b,c] 배열.
+		// removeLinkButton("prevComment");
+		// generateLinkButton(http9, "prevComment");
+		
+		// setTextFlashInDiv('verbose1', "F3 반응 주소:"+http9);
+		
+		
+		// console.log("주석줄:",remark9);
+		// console.log("주소:",http9);
+		
+		e.preventDefault();	// 기본 F3키 루틴을 막는다.
 		
 	} else if (e.key === "F4") {	// F4는 변수를 추적해 정보를 알려주려 한다.
 		const textarea1 = document.getElementById('code1');	  
@@ -1309,24 +1343,6 @@ window.addEventListener("keydown", (e) => {
 		// 선택된 변수를 찾아주어야 한다.
 		const kwd1 = getSelectedTextFromTextarea(textarea1);
 		setTextFlashInDiv('verbose1', "탐색할 변수 "+ kwd1);
-		
-	} else if (e.key == "F3") { 
-		// 함수 선언 위 주석도 찾는 단축키.
-		const textarea1 = document.getElementById('code1');	  
-		const caretLine = getCaretLineNumber(textarea1);
-		const currentLine = caretLine - 1; // 0 부터 시작하는 인덱스로...
-		let remark9, http9 = getUpperRemarkLine(textarea1, currentLine); // rems=[a,b,c] 배열.
-		
-		removeLinkButton("prevComment");
-		generateLinkButton(http9, "prevComment");
-		
-		setTextFlashInDiv('verbose1', "F3 반응 주소:"+http9);
-		
-		// console.log("주석줄:",remark9);
-		// console.log("주소:",http9);
-		
-		e.preventDefault();	// 기본 F3키 루틴을 막는다.
-		
 	} else if (e.key === "F8") {	// F8키는 코드변경, 이름 변경에 사용된다
 		const textarea1 = document.getElementById('code1');	  
 		const currentLine = getCaretLineNumber(textarea1)-1;
@@ -1402,7 +1418,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 /**
-정규식과 전체 일치하는 문자열을 반환합니다
+정규식과 전체 일치하는 문자열을 반환합니다 (Not Used)
 */  
 function findMatches(inputString, eq1) {
   const matches = inputString.match(eq1) || [];
@@ -1413,7 +1429,7 @@ function findMatches(inputString, eq1) {
   }));
 }
 /**
-정규식과 일치하는 괄호 그룹 #1의 문자열을 반환합니다
+정규식과 일치하는 괄호 그룹 #1의 문자열을 반환합니다 (Not Used)
 */  
 function findGrpMatches(inputString, eq1) {
   const matches = inputString.match(eq1);
@@ -1812,6 +1828,25 @@ function setTextFlashInDiv(divId, text) {
     blinkTimerId = setTimeout(function() {
       document.getElementById(divId).style.animation = 'none';
     }, 4000);
+  } else {
+    console.error(`Div with ID '${divId}' not found.`);
+  }
+}
+
+function setTextFlashIntervalDiv(divId, text) {
+  const targetDiv = document.getElementById(divId);
+
+  if (targetDiv) {
+    targetDiv.innerHTML = text;
+    targetDiv.style.animation = 'blink 0.5s linear infinite';
+
+    // Clear the timer outside the setTimeout callback
+    clearTimeout(blinkTimerIdShort);
+
+    // Set a timer to stop blinking after 4 seconds
+    blinkTimerIdShort = setTimeout(function() {
+      document.getElementById(divId).style.animation = 'none';
+    }, 1000);
   } else {
     console.error(`Div with ID '${divId}' not found.`);
   }
