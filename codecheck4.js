@@ -3520,34 +3520,7 @@ function handleFiles(files) {
 		/** 이미지들 중 첫번째, 1개를 캔버스에 로드한다(확대축소 해야 보임) */
 		if (g_images.length > 0) {
 			loadNewImage(canvas2_original_bgi, 0);
-			// let canvasX = canvas2_original_bgi;
-            // // Get the first image
-            // var firstImage = images[0];
-
-            // // Get the context of canvasX
-            // var canvasXContext = canvasX.getContext('2d');
-
-            // // Set the size of canvasX to match the size of the first image
-            // canvasX.width = firstImage.width;
-            // canvasX.height = firstImage.height;
-
-            // // Copy the first image onto canvasX
-            // canvasXContext.drawImage(firstImage, 0, 0);
-			// // handleKeyAction(0,0);
-
-			// /**-----------------PASTE IMAGE 출력(표시 부 가져옴)----------*/
-			// g_imageWidth = firstImage.width; /** 원본 너비를 알아둔다 Width */
-			// // 원본 배경을 오리지널BGI에 복사함
-			// canvas2_original_bgi = mod.copyCanvas(canvasX);
-			// // 현BGI는, 역시 오리지널과 함께 처음엔 1배줌으로 시작한다
-			// canvas2_concurrent_bgi = mod.copyCanvas(canvasX);
-			// mergeTriCanvases(canvasX, canvas1_original, canvas_3);
-			// // 원본 배경을 "불변" 오리지널BGI에 복사함
-			// canvasParent = mod.copyCanvas(canvasX);
-			// console.log("Image pasted!");
 			
-            // // Print a message indicating that the first image has been copied
-            // console.log("First image copied to canvasX");
         } else {
             // Print a message indicating that there are no images loaded
             console.log("No images loaded to copy");
