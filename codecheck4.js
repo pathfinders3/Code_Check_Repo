@@ -87,7 +87,10 @@ btnChkBlurryAll.addEventListener('click', () => {
 			strFile1 = "Nodel "+ g_files[i].name + "\n";
 		}
 		console.log("삭제or생?",strFile1);
-		console.log("🌧🍁블러스:",blurs);
+		console.log("🌧🍁Vertical Blurs(4Pick):",blurs);
+		
+		/** 25개의 가로 타일들을 쪽 넘김 체크용으로 투입.*/
+		chkTurnPageVirtual(g_imageWidth, g_act_x, g_act_y, 25, canvas4, width4);
 		
 		//
 		// console.log(g_files[0])
@@ -290,8 +293,43 @@ function fillTileWithMono(canvas, tile_id, mid1) {
 }
 
 
+/** 수퍼미들을 원래는 흑백 구분할 것만 구했지만, 이제는, 백색 배경 중에서도 흐린 부분을 찾아내야 한다. [최대 거리가 7 미만일 때 BLURY CHK 해야, 즉 한번더 구분해 주어야 함]
+*/
+function getSuperMiddle(max_dist, fwd1, bwd1) {
+	if (max_dist < 7) {// 먼저 7미만이면 배경일 수 있다.
+		const mid2 = 0; // 우측이 다 흰색 간주되므로...
+		const msgNoFill = `SEEMS: 안칠해진 듯:<${max_dist} Not Brushed... 그래서 기준을:${mid2}`;
+		printMiddleChoosingProcess(msgNoFill);
+		
+		printFormat(301,"무엇을 선택? 그리고 단순배경or배경+흐림? Fwd{0}|Bwd{1}", fwd1.val, bwd1.val);
+		
+		return mid2;
+		
+	} else if (fwd1.val == bwd1.val) {
+		// 위 조건이 충족하면, 이것들은 미들값과 같다는 뜻이다.
+		const msg1 = `평균 DIST값과 일치하므로 그냥 사용 '${fwd1.val}'를. Dists:[F${fwd1.dist},B ${bwd1.dist}]`;
+		printMiddleChoosingProcess(msg1);
+		return fwd1.val;
+		
+	} else if (bwd1.dist >= fwd1.dist) {
+		const msg2 = `466;BACKWARD가 더 큼 |${bwd1.val}| Dists:[F=${fwd1.dist},B=${bwd1.dist}]`;
+		printMiddleChoosingProcess(msg2);		
+		return bwd1.val;
+		
+	} else if (bwd1.dist < fwd1.dist) {
+		const msg3 = `FORWARD가 더 큼 |${fwd1.val}| Dists:[F=${fwd1.dist},B=${bwd1.dist}]`;
+		printMiddleChoosingProcess(msg3);		
+		return fwd1.val;		
+		
+	}
+	
+  // If none of the values are greater than 7, return None
+	return 255;// 알 수 없으므로, 다 검은색화 해버린다.(포기적 리턴) null;
+}
 
-/** 최대의 거리, 전방 값/거리, 후방 값/거리 5개를 받아서,
+/** 수퍼미들을 순수한 것만 구한다. (원본함수)
+*/
+/** 설명: 최대의 거리, 전방 값/거리, 후방 값/거리 5개를 받아서,
 측정된 거리 중 최대의 거리가 7 미만이면 배경색으로 간주하여 성과없이 리턴하고,
 그 이상이면 전/후방 값 중, 거리와 값 자체의 가중치를 고려하여,
 전방값 또는 후방값을 선택하여 리턴한다.
@@ -300,7 +338,7 @@ function fillTileWithMono(canvas, tile_id, mid1) {
 주고 있다. 그러나 필요할 경우(값이 정확하게 중간을 가르지 못할 경우),
 전방값 리스트, 후방값 리스트 전체를 받아 Evaluate할 수도 있다.
 */
-function getSuperMiddle(max_dist, fwd1, bwd1) {
+function OLDgetSuperMiddle(max_dist, fwd1, bwd1) {
 	if (max_dist < 7) {// 먼저 7미만이면 배경일 수 있다.
 		const mid2 = 0; // 우측이 다 흰색 간주되므로...
 		//setColorTextInDiv('verbose', `SEEMS: 안칠해진 듯:<${max_distance} Not Brushed... 그래서 기준을:${mid2}`, getRandomColor());		
@@ -350,9 +388,40 @@ function printClickedRegion(x1, y1) {
 	const colors1 = get3x3Colors(canvas2_original_bgi, x1, y1, kanban1);	//
 	const briger1 = convertRGBToBrightness(colors1);	// 3-elem array to 1-elem.
 	// 타일들을 콘솔에 출력해 본다.
-	printElementsWithComparison(briger1, superMiddle1); // 단색으로 출력할 때 0으로...
+
+	/**printElementsWithBLURCHECK을 사용한다. 배경색도 구분해야 함.BLUR책 위해*/
+	// printElementsWithComparison(briger1, superMiddle1); // 단색(배경간주)으로 출력할 때는 0으로...
+	// fwdbwd 구해야..
+	// 이 값의 min/max / mid1 값을 구해 출력한다
+	// 웬 디스턴스가 1,0만 나오는걸까.
+	const brSorted1 = getTileBrightness(x1, y1 , kanban1);	
+	const min1 = Math.min(...brSorted1);
+	const max1 = Math.max(...brSorted1);
+	const mid1 = ((min1+max1) / 2).toFixed(2);	// 'n*n'의 색들에서 중간값.		
 	
-	//return briger1; // 꺾은선 그래프 루틴에서 필요하므로 리턴함.(임시코드가 될 수도)
+	const virtualIdx = getVirtualIndex(brSorted1, mid1, true); // 미들값의 인덱스		
+	
+	const distances = calcDistances(brSorted1);	// 거리들을 계산해놓는다		
+	const max_distance = Math.max(...distances);
+
+	/** brSorted1에 있는 값 중에서 Mid1을 중간 기준으로 하여, →FWD, ←BWD로 값 
+	kanban 4일 시, 점의 개수는 4*4+1 (mid1값 추가됨)
+	*/
+	const highsFwd = collectHighFwd(brSorted1, distances, virtualIdx);
+	const highsBwd = collectHighBwd(brSorted1, distances, virtualIdx);
+	const fwd1 = findFirstNonNullElement(highsFwd); // NULL아닌 첫번째 White.
+	const bwd1 = findFirstNonNullElement(highsBwd);	// First Black.
+	// fwdbwd 구해야..끝도
+	
+		
+	// MID1 고르는 코드가 복잡. 이아래 추가되어야 함.
+	// const superMid1 = getSuperMiddle(max_distance, fwd1, bwd1);
+	
+	// debugger;
+	
+	const superMiddleInWhite1 = getSuperMiddle(max_distance, fwd1, bwd1);
+	printElementsWithBlurChk(briger1, superMiddleInWhite1);
+	
 	return superMiddle1;	// 차라리 꺾은선 그래프용 미들값 리턴.
 }
 
@@ -442,7 +511,7 @@ function moveTilePosition(x1, y1, x_steps, y_steps, sz1) {
 개수는 상수로 내부에서 고정인 상황. i*j.
 readTilesCoords()?
 */
-function readTiles(x1, y1, kanban1, ylong=1, xlongFixed=1) {
+function readVTiles(x1, y1, kanban1, ylong=1, xlongFixed=1) {
   const tileOrient = [];
 
   for (let i = 0; i < xlongFixed; i++) { // left right는 일단 안 움직임.
@@ -480,7 +549,7 @@ function getEightCliffs(id1, ylong) {
 	//const {overlapRatio, overlapLength} = getOverlapRatio(arr1, arr2);
 	
 	// const ylong = 4;
-	const tileOrient = readTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
+	const tileOrient = readVTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
 	// const y00 = tileOrient[0].y; // 테스트 코드
 	// printFormat(407,"Id_{0}: {1}_to_{2}↑", id1, y1, y00);
 
@@ -575,7 +644,7 @@ function getEightVerticalBlocks(x1, y1, ylong) {
 		// printFormat(445,"📈🍀👣TileY좌표_인바운드 ({0},{1}):갈 타일수{2}", x1,y1,ylong);
 	}
 
-	const tileOrient = readTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
+	const tileOrient = readVTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
 
 	let cntBlur = 0;
 	
@@ -626,7 +695,7 @@ function getCrisperVirtual(y1, ylong, canvas4, width4) {
 		// printFormat(445,"📈🍀👣TileY좌표_인바운드 ({0},{1}):갈 타일수{2}", x1,y1,ylong);
 	}
 
-	const tileOrient = readTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
+	const tileOrient = readVTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
 
 	let cntBlur = 0;
 	
@@ -664,6 +733,49 @@ function getCrisperVirtual(y1, ylong, canvas4, width4) {
 getEightCliffs<> 함수 내부를 분리, 개선한 것이다.
 다만 MID값 평가 부분은 없다. (EIGHTCLIFFS함수에서 흐림 판단부를 위해 따로 분리 작성)
 ylong:해당 타일로부터 몇 개를 하느냐(해당 타일 포함하여)
++-+-+
+| | |
++-+-+ ...
+e.g. xlong : 5 타일을, xjump : 4타일씩 건너뛰면서
+*/
+function getHorizontalBlocksVirtual(x1, y1, xlong, xjump, canvas4, width4) {
+	
+	const inbound1 = isTileInBounds(canvas4, x1, y1, kanban1, width4);
+	if (false == inbound1) {
+		printFormat(445,"📈👣👣TileY좌표 끝도달 ({0},{1}):갈 타일수{2}", x1,y1,ylong);
+		return -517;
+	} else {
+		// printFormat(445,"📈🍀👣TileY좌표_인바운드 ({0},{1}):갈 타일수{2}", x1,y1,ylong);
+	}
+
+	// 넘길 시 흐리면 밝기차는 127(혹은 특정 미들값)에 가까워 졌다가, 다시 멀어진다.
+	// 많은 경우 급격히 멀어짐.
+	let distances = [];
+	
+	//for (let ii=0; ii<xjump; ii++) {	// x방향으로 뛰면서, 밝기차를 읽는다
+	for (let ii=0; ii<xlong; ii+=xjump) {	// x방향으로 뛰면서, 밝기차를 읽는다
+		let x11 = x1 + ii*kanban1;
+		let y11 = y1;
+		const brSorted1 = getTileBrightnessVirtual(canvas4, x11, y11, kanban1);
+		
+		//printFormat(775, "이 타일X좌표:({0},{1})", x11,y11);
+		let dist1 = isTileBlurryRaw(brSorted1);	//한번만 부르면 된다. 세로로 길게 부르지 않음.
+		
+		distances.push(dist1);
+	}
+	
+	printFormat(775, "📈👣127과의 거리들dudu");
+	console.log("📈👣127과의 거리들(775)",distances);
+	
+	return distances;
+}
+
+/** 
+---- 이것은 Tile x,y를 기준으로, DN 하여 ylong 개수만큼 구하는 것이다.
+흐린 부분의 개수를 구해 리턴한다. (0에서 최대 ylong이 됨)
+getEightCliffs<> 함수 내부를 분리, 개선한 것이다.
+다만 MID값 평가 부분은 없다. (EIGHTCLIFFS함수에서 흐림 판단부를 위해 따로 분리 작성)
+ylong:해당 타일로부터 몇 개를 하느냐(해당 타일 포함하여)
 +-+
 | |
 +-+
@@ -686,7 +798,7 @@ function getEightVertiBlocksVirtual(x1, y1, ylong, canvas4, width4) {
 		// printFormat(445,"📈🍀👣TileY좌표_인바운드 ({0},{1}):갈 타일수{2}", x1,y1,ylong);
 	}
 
-	const tileOrient = readTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
+	const tileOrient = readVTiles(x1,y1,kanban1, ylong);	// e.g.[xup,yup],[x00,y00]
 
 	let cntBlur = 0;
 	/**{x: tileOrient[ii].x, y: tileOrient[ii].y, mid: superMid1 */
@@ -703,10 +815,11 @@ function getEightVertiBlocksVirtual(x1, y1, ylong, canvas4, width4) {
 		const max1 = Math.max(...brSorted1);
 		const mid1 = ((min1+max1) / 2).toFixed(2);	// 'n*n'의 색들에서 중간값.		
 
-
+// const row00 = [0, 0, 255, 255];
+// const results = isTileBlurry(row00);
+		
 		/** 수퍼 미들 구하는 부분은 생략한다, 대신 블러리 체크.
 		*/
-		//let tf = isTileMMMBlurry(wit1[i].min0, wit1[i].max0, 140, 230);
 		let tf = isTileMMMBlurry(min1, max1, 140, 230); /** 140~230은 아직 상수이다. **/
 		if (tf)
 			cntBlur++;
@@ -764,6 +877,7 @@ function chkBlurryVirtual(imageWidth, act_y, numTiles, canvas4, width4) {
 	
 	const xfive = calculateVerticalDivisions(imageWidth, 4);
 
+	// 세로 한번, 가로 한번 (1/2)
 	let cc = [];
 	for (let i=0; i<xfive.length; i++) {	// 주로 5회전.
 		let blurs5 = getEightVertiBlocksVirtual(xfive[i], act_y, numTiles, canvas4, width4); 
@@ -772,9 +886,113 @@ function chkBlurryVirtual(imageWidth, act_y, numTiles, canvas4, width4) {
 	console.log(cc, '기대개수:', numTiles);
 	setNewTextInDiv('verbose', `☁🌧🍁(흐린부분 R 개수:${cc[0]},${cc[1]},${cc[2]},${cc[3]}|4개이상시:${cc[4]})`, getRandomColor());
 	
+	// 세로 한번, 가로 한번 (2/2) (act_x가 현재 없어서 전역을 쓴다)
+	//getHorizontalBlocksVirtual(g_act_x, act_y, 25, 1, canvas4, width4);
+
 	// 흐리려면, 모든 요소가 numTiles, e.g. 50여야 한다.
-	// return cc.every(element => element === numTiles);
 	return [cc.some(element => element === numTiles), cc];
+}
+
+/** 가로방향은 별도의 체크블러리-체크턴페이지 함수로 
+*/
+function chkTurnPageVirtual(imageWidth, act_x, act_y, numTiles, canvas4, width4) {
+	
+	if (undefined == act_y || undefined == act_x) {
+		printFormat(64,"Please Mark Y Point, y1 정의 안됨 {0} ", act_y);
+		return;
+	}
+	
+	// 가로로 돌린다. 골짜기 그래프가 나와야 턴페이지 흐림이 된다.
+	//const flowGraph = getHorizontalBlocksVirtual(act_x, act_y, 25, 1, canvas4, width4);
+	const distances = getHorizontalBlocksVirtual(act_x, act_y, numTiles, 1, canvas4, width4);
+	// 밝기 배열로 힐스를 알아본다.
+	determineSlopes(distances);
+
+	// 흐리려면, 모든 요소가 numTiles, e.g. 50여야 한다.
+	//return [cc.some(element => element === numTiles), cc];
+}
+
+/** 증가하냐 감소하냐
+e.g.
+const myArray = [1, 3, 4, 6, 7, 9]; // 1에서 9 이므로, 8에, 인덱스는 끝까지 간것.
+"Total increased amount: 8, 999"
+console.log(`Total increased amount: ${result.totalInc}, ${result.stopped}
+*/
+function calcIncAmount(array, start_i) {
+    // let total1 = 0;
+    // let leng9 = array.length;
+    // for (let i = start_i; i < array.length - 1; i++) {
+        // const difference = array[i + 1] - array[i];
+        // if (difference <= 0) {
+            // // Not strictly increasing and stopped.
+            // return {totalInc:total1, stopped:i};
+        // }
+        // total1 += difference;
+    // }
+    // return {totalInc:total1, stopped:999};
+}
+
+/**
+const myArray = [1, 2, 3, 5, 8, 8, 6];
+const [result,dists] = isIncreasingSeq(myArray);
+console.log(result);
+console.log(dists);
+결과:
+[true, true, true, true, true]
+[0, 1, 1, 2, 3]
+*/
+function isIncreasingSeq(arr) {
+  if (arr.length <= 1) {
+    return [true]; // Array with 1 or less elements is considered increasing
+  }
+
+  const result = [null]; 
+  const dists = [0]; // distances
+  for (let i = 1; i < arr.length; i++) {
+  	let inc1 = null;
+  	if (arr[i] > arr[i-1]) {
+			inc1 = '+';
+    } else if (arr[i] < arr[i-1]) {
+    	inc1 = '-';
+    } else {
+    	inc1 = '=';
+    }
+
+		result.push(inc1); 
+    dists.push(Math.abs(arr[i] - arr[i - 1]));
+  }
+
+  return [result,dists];
+}
+
+/** 증가하냐 감소하냐
+e.g.
+brsorted로 만든 'distances'를 가지고 호출하라.
+distances:[0, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 0, 2, 6, 8, 11, 13, 17, 20, 21, 25, 28, 32, 33]
+*/
+function determineHills(array) {
+	// let start_i = 0;
+	
+	// for (let i=0; i<999; i++) {
+		
+		// let hill1 = calcIncAmount(array, start_i);
+		// if (hill1.stopped == 999 || 998 == i) {
+			// console.error("뭔가의 오류!");
+			// printFormat(933,"와중:°{0}만큼 증가, {1}에서 정지",hill1.totalInc, hill1.stopped);
+			// return true;
+		// }
+		// printFormat(933,"°{0}만큼 증가, {1}에서 정지",hill1.totalInc, hill1.stopped);
+		// // console.log(hill1.totalInc, hill1.stopped);
+		// start_i = hill1.stopped;
+	// }
+}
+
+function determineSlopes(array) {
+	const [result,dists] = isIncreasingSeq(array);	
+	
+	console.log(result);
+	console.log(dists);
+	
 }
 
 /** 
@@ -934,12 +1152,6 @@ function getTileBrightnessVirtual(canvas4, x1, y1, sz1) {
 }
 
 
-/** 
----- 이것은 그림 8-9개 영역에 대해서 구하는 것이다.
-Tile ID를 기준으로 한다????
-일단 3개부터 한다.
-*/
-//function getEightSuperMids(id1) {
 
 
 
@@ -948,8 +1160,6 @@ Tile ID를 기준으로 한다????
 	return; 중간값(super middle value) e.g. 128
 */
 function compareRegion() {
-	const brightGap = Number(document.getElementById('rangeBright').value);//소티드배열에서 몇번째 (슬라이드바는 현재 사용 안함)
-	
 	// 클릭 안됐을 시에는 x/y 좌표가 없으므로 클릭 후 실행함에 유의.
 	const colors1 = get3x3Colors(canvas2_original_bgi, g_act_x, g_act_y, kanban1);	
 	
@@ -966,7 +1176,6 @@ function compareRegion() {
 
 	/** 미들값을 출력함 */
 	console.log(`min-max: (${min1}~${max1}), Mid1:${mid1}, 중앙값:${mid1}`);
-	//setColorTextInDiv('verbose', `In (${min1}~${max1}),미들값(mid1): ${mid1}❗ `, getRandomColor());
 	
 	const virtualIdx = getVirtualIndex(brSorted1, mid1, true); // 미들값의 인덱스
 	
@@ -986,9 +1195,9 @@ function compareRegion() {
 	// collectHighFwd(): 파라메터는 자연수 배열 'brSorted1', 정수 배열 'distances', 시작 인덱스. 이중 'distances' 요소의 평균보다 큰 값들만 반환
 	
 	/** brSorted1에 있는 값 중에서 Mid1을 중간 기준으로 하여, →FWD, ←BWD로 값 */
-	const highsFwd = collectHighFwd(brSorted1, distances, virtualIdx);
+	const highsFwd = collectHighFwd(brSorted1, distances, virtualIdx); // {val,dist}
 	const highsBwd = collectHighBwd(brSorted1, distances, virtualIdx);
-	const fwd1 = findFirstNonNullElement(highsFwd);
+	const fwd1 = findFirstNonNullElement(highsFwd);	// 가장 첫 Non-Null값.
 	const bwd1 = findFirstNonNullElement(highsBwd);
 	
 	// highsFWD e.g.[107,122...] 가 너무 먼지 체크한다. 너무 멀지 않고 적당히 가깝다면, 
@@ -1002,28 +1211,22 @@ function compareRegion() {
 	
 	const max_distance = Math.max(...distances);
 	const superMid1 = getSuperMiddle(max_distance, fwd1, bwd1);
-	/*
-	const max_distance = Math.max(...distances);
-	if (max_distance < 7) {// 7미만이면 배경일 수 있다.
-		const mid2 = 0; // 우측이 다 흰색 간주되므로...
-		printMiddleChoosingProcess(msgNoFill);
-		
-		//debugger;	// 최대 8차이면 안칠해졌다 하는데... 음...
-		return mid2; 
-		....... .......
-	*/
 	//console.log(distances.length, "길이"); // 15, Why NOT 16?
 	
 	g_dist9 = [...distances];
 	g_dist9sort = sortDescend(distances);// 큰 순서로 소트
 	/** dist9sort 에서 거리를 꺼내어, mid1까지의 스텝을 비교한다 */
-	
-	// return null;	
 
-	// if (superMid1 == null) {
+	/** 0은 고의로 정해진 것이라서 상관없다. 다만 수퍼미들 구하는 함수에서 'BLURRY' 부분에서만큼은 0이 나오지 않도록, 조정해야 한다. */
+	// if (superMid1 <= 0) {
+		// printFormat(1048,"슈퍼미드 이상있음:{0}", superMid1);
+		// printFormat(1048,"fwd1;{0},bwd1;{1}", fwd1.val, bwd1.val);
+		// // console.log("fwds", highsFwd);	// 배열
+		// // console.log("bwds", highsBwd);
 		// debugger;	// 아무 조건도 충족 안할 시 이쪽으로 온다.		
 		// return null;
 	// }
+	
 	return superMid1;
 
 	
@@ -1032,7 +1235,7 @@ function compareRegion() {
 	https://pasteboard.co/V6VyGHypyx09.png (도표로 설명)
 	*/
 
-}
+} // End of compRegion ----------
 
 /** 
 에러 메시지에 변수명을 표시하기 위한 함수. 여러 변수 측정시, 배열로 줘야한다.
@@ -1071,11 +1274,65 @@ function printNumberData(arr) {
 const myArray = [10, 5, 15, 2, 8];
 const middleValue = 7;
 printElem..WithComparison(myArray, middleValue);
+🏒 거의 클릭 상황에서만 호출. 🏹
  */
 function printElementsWithComparison(arr, middleValue) {
   // Check if the array is 1D and all elements are numbers
   if (!Array.isArray(arr) || !arr.every(item => typeof item === 'number')) {
-    throw new Error("2D? The Array must be a 1D array of numbers in printElementsWithComparison()");
+    throw new Error("2D? The Array must be a 1D array of numbers in printElemsWithComparison()");
+  }
+
+  // Iterate through the array, printing each element and its comparison
+  for (let i = 0; i < arr.length; /*i+=4 계수는 최종 줄에서 증가시킨다*/) {
+	let row1 = '';
+
+	for (let j=0; j<kanban1; j++) {
+		let element = arr[i+j];	// ROW첫줄에서 0~3까지 더하며 반복한다.
+
+		if (i+j >= arr.length) {
+			console.error(`ROW+COL이 맞게 설정되지 않은 것 같음. (${i}+${j}) vs ${arr.length}`);
+			alert(`ROW+COL이 맞게 설정되지 않은 것 같음. (${i}+${j}) vs ${arr.length}`);
+		}
+		
+		let isGreaterThanMiddle = (element > middleValue) ? "⬜":"⬛";
+	
+		row1 += `${element.toString().padStart(3, '_')}(${isGreaterThanMiddle}) `;		
+	}
+	console.log(row1);	
+	
+	i += kanban1;	// j가 가로로 이동하며 더하므로 i로는 다음줄로 간다.
+  }
+  
+	const min1 = Math.min(...arr);	// arr: Briger, brsorted1, etc.
+	const max1 = Math.max(...arr);
+	const diff1 = max1 - min1;
+	/** 127과의 거리는 가까우며 어두워야 [우측2개페이지중]내측 페이지(eg.10)고, 멀면서 밝아야 외측페이지(eg.12)다.*/
+	const minn127 = Math.abs(min1-127); // diff bt min1 and 127.
+	const maxn127 = Math.abs(max1-127); // diff bt max1 and 127.
+	const diff2 = (minn127 > maxn127) ? minn127 : maxn127;
+	/** (각 타일내)중간값과의 거리는 가까우며 어두워야 [우측2개페이지중]내측 페이지(eg.10)고, 멀면서 밝아야 외측페이지(eg.12)다.*/	
+	// const minnSMD = Math.abs(min1-middleValue); // diff bt min1 and 127.
+	// const maxnSMD = Math.abs(max1-middleValue); // diff bt max1 and 127.
+	// const diff3 = (minnSMD > maxnSMD) ? minnSMD : maxnSMD;	
+  
+	printFormat(923,"이Tile min값:{0}~中{1}~max값:{2},대소차:{3},127과의거리:{4}", min1, middleValue,max1, diff1, diff2);
+  // printFormat(922,"SuperMid과의거리:{0}", diff3);
+
+  // columns' characteristics
+  const colt = getColMinMax(arr, kanban1); //Output: {0:[1,3], 1:[4,6], 2:[7,9]}
+  printFormat(922,"Columns 특징:{0}", colt);
+  console.log(colt);
+}
+
+/** 
+const myArray = [10, 5, 15, 2, 8];
+const middleValue = 7;
+printElemWithComparison에서 변형. 검은색이 없어도 미들값을 정한다. 즉 배경이라도 무조건 0이 아님. (myArray, middleValue);
+ */
+function printElementsWithBlurChk(arr, middleValue) {
+  // Check if the array is 1D and all elements are numbers
+  if (!Array.isArray(arr) || !arr.every(item => typeof item === 'number')) {
+    throw new Error("2D? The Array must be a 1D array of numbers in printElemsWithComparison()");
   }
 
   // Iterate through the array, printing each element and its comparison
@@ -1102,15 +1359,20 @@ function printElementsWithComparison(arr, middleValue) {
 	const min1 = Math.min(...arr);	// arr: Briger, brsorted1, etc.
 	const max1 = Math.max(...arr);
 	const diff1 = max1 - min1;
+	/** 127과의 거리는 가까우며 어두워야 [우측2개페이지중]내측 페이지(eg.10)고, 멀면서 밝아야 외측페이지(eg.12)다.*/
+	const minn127 = Math.abs(min1-127); // diff bt min1 and 127.
+	const maxn127 = Math.abs(max1-127); // diff bt max1 and 127.
+	const diff2 = (minn127 > maxn127) ? minn127 : maxn127;
   
-  printFormat(922,"이Tile의 min값:{1}, mid1:{0}, max값:{2}, 대소차:{3}", middleValue, min1, max1, diff1);
+	printFormat(923,"이Tile min값:{0}~中{1}~max값:{2},대소차:{3},127과의거리:{4}", min1, middleValue,max1, diff1, diff2);
+
+  //printFormat(922,"이Tile의 min값:{0}~Super中{1}~max값:{2},대소차:{3},SuperMid과의거리:{4}", min1, middleValue, max1, diff1, diff3);
   
   // columns' characteristics
   const colt = getColMinMax(arr, kanban1); //Output: {0:[1,3], 1:[4,6], 2:[7,9]}
   printFormat(922,"Columns 특징:{0}", colt);
   console.log(colt);
 }
-
 /** 
 const myArray = [10, 5, 15, 2, 8];
 const middleValue = 7;
@@ -1120,7 +1382,7 @@ so bw_array = [true,false,true,...];
 function getBlackOrWhite(arr, middleValue) {
   // Check if the array is 1D and all elements are numbers
   if (!Array.isArray(arr) || !arr.every(item => typeof item === 'number')) {
-    throw new Error("2D? The Array must be a 1D array of numbers in printElementsWithComparison()");
+    throw new Error("2D? The Array must be a 1D array of numbers in printElemsWithComparison()");
   }
 
 	let bw1 = [];
@@ -1861,6 +2123,23 @@ function getOverlapPoints(y1, y2, y3, y4) {
   return result;
 }
 
+
+/** 주어진 "중간" 값에서 가장 멀리 있는 배열의 요소를 반환 */
+function findFurthestValue(arr, medium) {
+  // Check if array is empty or has less than 2 elements
+  if (arr.length < 2) {
+    return "Array must have at least 2 elements";
+  }
+  // Find the distance (absolute difference) from each element to the medium value
+  let distances = arr.map(value => Math.abs(value - medium));
+  // Find the index of the element with the maximum distance
+  const indexOfFurthest = distances.indexOf(Math.max(...distances));
+  // Return the element at the farthest index
+  //return arr[indexOfFurthest];	// 그 값이 아니라, 그 거리를 리턴해야 한다.
+  return distances[indexOfFurthest];
+}
+
+
 /**
 숫자 배열 1개가 있습니다. 여기에서, 주어진 y1~y2 구간에 들어있는 배열 요소를 리턴하는 Javascript 함수를 만들어주세요.
 */
@@ -1899,12 +2178,6 @@ function handleAllSpanClick(nn) {
 
 
 
-// // Add an event listener to the color picker input
-// colorPicker.addEventListener("input", function () {
-	// font_color.value = colorPicker.value;
-	// selectedHexColor = colorPicker.value;
-// });
-// // 색 선택 부분...
 
 
 // In your JavaScript code
@@ -3048,12 +3321,6 @@ function createCanvasLikeExisting(existingCanvas) {
 // function getWitness(arr) {
 	// const mids = getAllMids(arr);	
 	// const min1 = Math.min(...mids);
-	// const max1 = Math.max(...mids);
-	// console.log(min1, max1); // [3, 5]
-
-	// const recentMids = arr.slice(arr.length - 3);	
-	
-	// return recentMids;
 // }
 /** addCoordniate: add Witness. 
 
@@ -3099,31 +3366,13 @@ function isValidCoordinate(x, y) {
 }
 
 
-/** 타일 모음이 흐린 지 리턴 (mid1 모음으로 판단) 
-SPACE-SPACE-SPACE-BLUR-BLUR-BLUR 이면, 블러리 입니다.
-파라메터는 전역 변수 ***/
-// function areBlurry(from1, to1) {
-	// const mids = getAllMids(g_witness); /** G_WITNESS 사용 함. °°°°°*/
-	
-	// const min1 = Math.min(...mids);
-	// const max1 = Math.max(...mids);
-	
-	// console.log(min1, max1); // [3, 5]
 
-	// if (min1 > from1 && max1 < to1) {
-		// printFormat(2555,"[블러리]🌲🌲🌲多雲的MidVals({1}~{2}) fulfills {3}~{4}", min1, max1, from1, to1);
-		// return true;
-	// }
-	// printFormat(2555,"[블러리]💠PUNC또는WHITE的({1}~{2}) 불만족:{3}~{4}", min1, max1, from1, to1);
-	// return false;
-// }
-function isTileSpace() {
-}
+
 /** 한 타일의 값들을 모두 받아서... 그래서 min max, 값을 여기서 별도로 구한다. 그래서 이 함수를 부르기 전에 구할 필요가 없다. .
 그리고 true하기에 수용 가능한 from,to 구간을 알려주면, 받은 타일이 만족하는 지를 리턴할 것이다. 
 from1,to1 : 상수들, 사용자가 원하는...
 ***/
-function isTileBlurry(arr, from1, to1) {
+function OLDisTiBlurry(arr, from1, to1) { // --------- DEL XX //
 	const min1 = Math.min(...arr);
 	const max1 = Math.max(...arr);
 	// console.log(min1, max1); // [3, 5]
@@ -3135,6 +3384,48 @@ function isTileBlurry(arr, from1, to1) {
 	printFormat(2555,"[블러?Nay]💠PUNC또는WHITE的({1}~{2}) 불만족:{3}~{4}", min1, max1, from1, to1);
 	return false;	
 }
+
+/** 한 타일의 값들을 모두 받아서... 그래서 min max, 값을 여기서 별도로 구한다. 그래서 이 함수를 부르기 전에 구할 필요가 없다. .
+그리고 true하기에 수용 가능한 from,to 구간을 알려주면, 받은 타일이 만족하는 지를 리턴할 것이다. 
+from1,to1 : 상수들, 사용자가 원하는...
+RAW: 일렬화 시킨 .
+***/
+function isTileBlurryRaw(row00) {
+  // Find min, max, and mid values of the array
+  const minVal = Math.min(...row00);
+  const maxVal = Math.max(...row00);
+  const midVal = Math.floor((minVal + maxVal) / 2);
+
+  // Calculate the average of the array
+  const average = Math.floor(row00.reduce((a, b) => a + b, 0) / row00.length);
+
+  // Find distances between min/max/average and the second element (row00[1])
+  const distToAvgMin = Math.abs(minVal - average);
+  const distToAvgMax = Math.abs(maxVal - average);
+
+	// 127에서 가까우냐 머냐를...
+	
+  // Return an object containing the calculated values
+  //printFormat(3125, "min;{0},max;{1},mid;{2},avg;{3}", minVal, maxVal, midVal, average);
+  
+	//const farthest1 = findFurthestValue([minVal, maxVal], 127);
+	const farthest1 = findFurthestValue([average, 127], 127);
+	printFormat(3125, "127과의 거리:{0}, avgx:{1}", farthest1, average);
+  //printFormat(3125, "mn{0},max{1},mid{2},avg{3}, DIST:mn{5}max{6}for[1]mn{7}for[1]avg{8}for[1]max",     minVal,    maxVal,    midVal,    average, distToAvgMin, distToAvgMax, distToMinSecond, distToAvgSecond, distToMaxSecond);
+
+	//return (minVal - difference); // difference가 무엇인가?
+	
+  // return {
+    // minVal,maxVal,midVal,average,  distToAvgMin,distToAvgMax,
+    // distToMinSecond,distToAvgSecond,distToMaxSecond
+  // };
+  return farthest1;
+}
+// Example usage
+// const row00 = [0, 0, 255, 255];
+// const results = isTileBlurry(row00);
+// console.log(results);
+
 
 function isTileMMMBlurry(min1, max1, from1, to1) {
 	if (arguments.length !== 4) {
@@ -3248,7 +3539,7 @@ tileblury호출하라.
 			const lastElem = wit1.at(-1); // lastElem = 구 wit1[2].
 			const print1 = printFormat(2296,"자취 수퍼mid값:{0}, 범위({1}~{2}) 전체의Count:{3}", lastElem.mid, lastElem.min0, lastElem.max0, g_witness.length);
 			setNewTextInDiv('verbose', `🍁(${print1})`, getRandomColor());			
-			evaluateBlocks(wit1);
+			evalueBlocks(wit1);
 			
 */
 function evaluateBlocks(wit1, minEdge=140, maxEdge=230) {
@@ -3256,7 +3547,7 @@ function evaluateBlocks(wit1, minEdge=140, maxEdge=230) {
 
 	let bBlurs = [];
 	for (let i=0; i<wit1.length; i++) {
-		//let tf = isTileMMMBlurry(wit1[i].min0, wit1[i].max0, 140, 230);
+		//let tf = isTiMMMBlurry(wit1[i].min0, wit1[i].max0, 140, 230);
 		let tf = isTileMMMBlurry(wit1[i].min0, wit1[i].max0, minEdge, maxEdge);
 		bBlurs.push(tf);
 		let assist = tf ? '❆' : '➕';
@@ -3531,7 +3822,6 @@ function handleFiles(files) {
         console.error("Error loading images:", error);
     });
 }
-
 
 // Function to handle drag and drop events
 function handleDrop(event) {
