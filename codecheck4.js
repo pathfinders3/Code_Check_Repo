@@ -918,30 +918,61 @@ const myArray = [1, 3, 4, 6, 7, 9]; // 1에서 9 이므로, 8에, 인덱스는 �
 "Total increased amount: 8, 999"
 console.log(`Total increased amount: ${result.totalInc}, ${result.stopped}
 */
-function calcIncAmount(array, start_i) {
-    // let total1 = 0;
-    // let leng9 = array.length;
-    // for (let i = start_i; i < array.length - 1; i++) {
-        // const difference = array[i + 1] - array[i];
-        // if (difference <= 0) {
-            // // Not strictly increasing and stopped.
-            // return {totalInc:total1, stopped:i};
-        // }
-        // total1 += difference;
-    // }
-    // return {totalInc:total1, stopped:999};
+// function calcIncAmount(array, start_i) {
+
+
+/**
+const input = [["-", 7], ["+", 7], ["=", 2], ["+", 2], ["-", 1], ["=", 0], ["+", 2], ["-", 3], ["=", 0], ["-", 1], ["=", 0], ["-", 3], ["+", 1], ["=", 0], ["-", 1], ["+", 2]];
+const maxOperations = 5;
+
+const result = applyMaxOperations(input, maxOperations);
+
+결과:
+감소, 량의 짝: [["-", 5], ["-", 2], ["+", 7], ["=", 2], 
+
+http://prntscr.com/3IVBzbVQbLB7
+https://pasteboard.co/eJLt3QqDGGOF.png
+*/
+function applyMaxOperations(arr, maxOperations) {
+    let operationsLeft = maxOperations;
+    let result = [];
+
+    for (let i = 0; i < arr.length; i++) {
+        const [operator, operand] = arr[i];
+
+        if (operationsLeft > 0 && operator === '+' && operand > operationsLeft) {
+            result.push(['+', operationsLeft]);
+            result.push(['+', operand - operationsLeft]);
+            operationsLeft = 0;
+        } else if (operationsLeft > 0 && operator === '-' && operand > operationsLeft) {
+            result.push(['-', operationsLeft]);
+            result.push(['-', operand - operationsLeft]);
+            operationsLeft = 0;
+        } else {
+            result.push(arr[i]);
+            if (operator === '+' || operator === '-') {
+                operationsLeft -= operand;
+            }
+        }
+    }
+
+    return result;
 }
 
 /**
+입력: 127과의 거리 모음.
 const myArray = [1, 2, 3, 5, 8, 8, 6];
 const [result,dists] = isIncreasingSeq(myArray);
 console.log(result);
 console.log(dists);
 결과:
-[true, true, true, true, true]
-[0, 1, 1, 2, 3]
+늘었나/줄었나:[true, true, true, true, true] 
+는양/줄은양:[0, 1, 1, 2, 3]
+
+http://prntscr.com/3IVBzbVQbLB7
+https://pasteboard.co/eJLt3QqDGGOF.png
 */
-function isIncreasingSeq(arr) {
+function isIncreasingSeq(arr) { // [늘,늘,늘,늘,늘], [0, 1, 1, 2, 3]
   if (arr.length <= 1) {
     return [true]; // Array with 1 or less elements is considered increasing
   }
@@ -958,7 +989,7 @@ function isIncreasingSeq(arr) {
     	inc1 = '=';
     }
 
-		result.push(inc1); 
+	result.push(inc1); 
     dists.push(Math.abs(arr[i] - arr[i - 1]));
   }
 
@@ -970,22 +1001,7 @@ e.g.
 brsorted로 만든 'distances'를 가지고 호출하라.
 distances:[0, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 0, 2, 6, 8, 11, 13, 17, 20, 21, 25, 28, 32, 33]
 */
-function determineHills(array) {
-	// let start_i = 0;
-	
-	// for (let i=0; i<999; i++) {
-		
-		// let hill1 = calcIncAmount(array, start_i);
-		// if (hill1.stopped == 999 || 998 == i) {
-			// console.error("뭔가의 오류!");
-			// printFormat(933,"와중:°{0}만큼 증가, {1}에서 정지",hill1.totalInc, hill1.stopped);
-			// return true;
-		// }
-		// printFormat(933,"°{0}만큼 증가, {1}에서 정지",hill1.totalInc, hill1.stopped);
-		// // console.log(hill1.totalInc, hill1.stopped);
-		// start_i = hill1.stopped;
-	// }
-}
+// function determineHills(array) {
 
 function determineSlopes(array) {
 	const [result,dists] = isIncreasingSeq(array);	
@@ -1260,6 +1276,53 @@ function assert(ii, values, ...expectedTypes) {
     }
   }
 }
+
+/** 
+n*n의 2차원 배열인지 확인하는 함수.(exampleArray, hori, verti)
+e.g. assertArray2d(exampleArray, hori, verti)
+ */
+function assertArray2d(arr, col1, row) {
+    if (!Array.isArray(arr)) {
+        return false; // Not an array
+    }
+    const totalLength = col1 * row;
+
+    for (let i = 0; i < row; i++) {
+        if (!Array.isArray(arr[i]) || arr[i].length !== col1) {
+			// 비정상일 때 출력함. 가로세로가 맞아야...
+			console.error(`틀린줄:row ${i} has ${arr[i].length}, should have ${col1}`);
+
+            return false; 
+        }
+    }
+
+    return true; // All conditions met
+}
+// Example usage:
+// const exampleArray = [[1, 2], [3, 4], [5, 6]];
+// const n1 = 2;// const n2 = 3;
+
+
+/** 
+n*n의 2차원 배열이 맞으면, 데이터형을 확인해준다.(arr, index_of_column, wanted_type)
+e.g.tf = assertArrayElems(arr, 0, 'number'); */
+function assertArrayElems(arr, col1, type1) {
+    if (!Array.isArray(arr)) {
+        return false; // Not an array
+    }
+
+    for (let i = 0; i < arr.length; i++) {
+        if (typeof(arr[i][col1]) == type1) {
+			console.log('GOOD', typeof(arr[i][col1]));
+			return true; //
+        }
+    }
+
+	console.error('BAD', typeof(arr[0][col1]));
+    return false; // 
+}
+
+
 
 
 /** 
