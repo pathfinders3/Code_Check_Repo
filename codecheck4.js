@@ -86,11 +86,14 @@ btnChkBlurryAll.addEventListener('click', () => {
 		} else {
 			strFile1 = "Nodel "+ g_files[i].name + "\n";
 		}
-		console.log("삭제or생?",strFile1);
+		console.log("삭제or생?",strFile1); 
 		console.log("🌧🍁Vertical Blurs(4Pick):",blurs);
 		
 		/** 25개의 가로 타일들을 쪽 넘김 체크용으로 투입.*/
 		chkTurnPageVirtual(g_imageWidth, g_act_x, g_act_y, 25, canvas4, width4);
+		
+		// assert할 때.
+		//console.log(assertAreIndices(exampleArray, max1));
 		
 		//
 		// console.log(g_files[0])
@@ -728,7 +731,7 @@ function getCrisperVirtual(y1, ylong, canvas4, width4) {
 }
 
 /** 
----- 이것은 Tile x,y를 기준으로, DN 하여 ylong 개수만큼 구하는 것이다.
+---- 이것은 Tile x,y를 기준으로, 타일들을 내려가며 ylong 개수만큼 구하는 것이다.
 흐린 부분의 개수를 구해 리턴한다. (0에서 최대 ylong이 됨)
 getEightCliffs<> 함수 내부를 분리, 개선한 것이다.
 다만 MID값 평가 부분은 없다. (EIGHTCLIFFS함수에서 흐림 판단부를 위해 따로 분리 작성)
@@ -749,10 +752,9 @@ function getHorizontalBlocksVirtual(x1, y1, xlong, xjump, canvas4, width4) {
 	}
 
 	// 넘길 시 흐리면 밝기차는 127(혹은 특정 미들값)에 가까워 졌다가, 다시 멀어진다.
-	// 많은 경우 급격히 멀어짐.
+	/** 한 타일 */
 	let distances = [];
 	
-	//for (let ii=0; ii<xjump; ii++) {	// x방향으로 뛰면서, 밝기차를 읽는다
 	for (let ii=0; ii<xlong; ii+=xjump) {	// x방향으로 뛰면서, 밝기차를 읽는다
 		let x11 = x1 + ii*kanban1;
 		let y11 = y1;
@@ -761,13 +763,13 @@ function getHorizontalBlocksVirtual(x1, y1, xlong, xjump, canvas4, width4) {
 		//printFormat(775, "이 타일X좌표:({0},{1})", x11,y11);
 		let dist1 = isTileBlurryRaw(brSorted1);	//한번만 부르면 된다. 세로로 길게 부르지 않음.
 		
-		distances.push(dist1);
+		distances.push(dist1);	// [ a,b, !dist1! ]
 	}
 	
 	printFormat(775, "📈👣127과의 거리들dudu");
 	console.log("📈👣127과의 거리들(775)",distances);
 	
-	return distances;
+	return distances; // [ a,b,c,d,e ] to 127.
 }
 
 /** 
@@ -894,6 +896,7 @@ function chkBlurryVirtual(imageWidth, act_y, numTiles, canvas4, width4) {
 }
 
 /** 가로방향은 별도의 체크블러리-체크턴페이지 함수로 
+
 */
 function chkTurnPageVirtual(imageWidth, act_x, act_y, numTiles, canvas4, width4) {
 	
@@ -906,19 +909,18 @@ function chkTurnPageVirtual(imageWidth, act_x, act_y, numTiles, canvas4, width4)
 	//const flowGraph = getHorizontalBlocksVirtual(act_x, act_y, 25, 1, canvas4, width4);
 	const distances = getHorizontalBlocksVirtual(act_x, act_y, numTiles, 1, canvas4, width4);
 	// 밝기 배열로 힐스를 알아본다.
-	determineSlopes(distances);
+	//determineSlopes(distances);
+	
+	/** 모든 밸리 dn-up  ↘↗ 찾음: 127에 가까워졌다 멀어지는 곳. e.g. indices7:[0,1,2,3, -11]*/
+	const indices7 = findValleysIndices(distances);	// e.g. distances=[a,b, dist1]; 
+	
+	/** indices7이용하여, b/a (기울기) 배열을 구하여 리턴받아야 한다.*/
+	
 
 	// 흐리려면, 모든 요소가 numTiles, e.g. 50여야 한다.
 	//return [cc.some(element => element === numTiles), cc];
 }
 
-/** 증가하냐 감소하냐
-e.g.
-const myArray = [1, 3, 4, 6, 7, 9]; // 1에서 9 이므로, 8에, 인덱스는 끝까지 간것.
-"Total increased amount: 8, 999"
-console.log(`Total increased amount: ${result.totalInc}, ${result.stopped}
-*/
-// function calcIncAmount(array, start_i) {
 
 
 /**
@@ -972,7 +974,7 @@ console.log(dists);
 http://prntscr.com/3IVBzbVQbLB7
 https://pasteboard.co/eJLt3QqDGGOF.png
 */
-function isIncreasingSeq(arr) { // [늘,늘,늘,늘,늘], [0, 1, 1, 2, 3]
+function isIncreasingSeq(arr) { // [↑,↑,↑,↑,↑], [0, 1, 1, 2, 3]
   if (arr.length <= 1) {
     return [true]; // Array with 1 or less elements is considered increasing
   }
@@ -996,19 +998,79 @@ function isIncreasingSeq(arr) { // [늘,늘,늘,늘,늘], [0, 1, 1, 2, 3]
   return [result,dists];
 }
 
+
+
+
+/** 다운 부분을 1곳 찾는다 */
+function findTransitDownIndex(arr, idx1) {
+	// 항상 1부터 시작해야 한다. 0이 아님.
+    for (let i=idx1+1; i<arr.length-1; i++) {
+    	// 내려갔다가, 올라간다.
+      if (arr[i-1]>arr[i] && arr[i]<arr[i+1]) {
+		// console.log(`this i:`,i); // https://pasteboard.co/6GfyWUuLnYVl.png
+          return i;
+      }
+    }
+    return -22; // No transition found
+}
+/** 업 부분을 1곳 찾는다 */
+function findTransitUpIndex(arr, idx1) {
+	// 항상 1부터 시작해야 한다. 0이 아님.
+    for (let i=idx1+1; i<arr.length-1; i++) {
+    	// 올라갔다가a<b, 내려간다b>c
+    		//if (arr[i-1]<arr[i] && arr[i]>arr[i+1]) 
+        if (arr[i-1]<arr[i] && arr[i]>arr[i+1]) {
+			//console.log(`this i:`,i); // output: https://pasteboard.co/6GfyWUuLnYVl.png
+            return i;
+        }
+    }
+    return -11; // No transition found
+}
+/** 모든 업 부분을  찾는다 
+const arr1 = [1,3,6, 4,3,1,8, 5,6,15, 12];
+Transit index＆val:", [2, 6, 9, -11], "➔"
+*/
+function findPeaksIndices(arr) {
+    let retContent = []; // 그 인덱스의 내용들
+    let retAll = []; // 인덱스들
+  let retOne = 0; // returned index.
+  while (retOne > -1) {
+    retOne = findTransitUpIndex(arr, retOne);
+    retAll.push(retOne);
+    retContent.push(arr[retOne]);    
+  }
+
+  console.log("Transit index＆val:", retAll, "↗↘" ); 
+  return [retAll, retContent];
+}
+/** 모든 다운 부분을  찾는다 
+const arr1 = [1,3,6, 4,3,1,8, 5,6,15, 12];
+"Transit index＆val:", [5, 7, -22], "➔"
+*/
+function findValleysIndices(arr) {
+    let retAll = [];
+  let retOne = 0; // returned index.
+  while (retOne > -1) {
+    retOne =findTransitDownIndex(arr, retOne);
+    retAll.push(retOne);
+  }
+
+  console.log("Transit index＆val:", retAll, "↘↗" ); 
+  return retAll;
+}
+
+
+
 /** 증가하냐 감소하냐
 e.g.
 brsorted로 만든 'distances'를 가지고 호출하라.
 distances:[0, 1, 0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 0, 2, 6, 8, 11, 13, 17, 20, 21, 25, 28, 32, 33]
 */
-// function determineHills(array) {
-
 function determineSlopes(array) {
 	const [result,dists] = isIncreasingSeq(array);	
 	
-	console.log(result);
+	console.log('slop1',result);
 	console.log(dists);
-	
 }
 
 /** 
@@ -1145,7 +1207,7 @@ function extractMidValues(array) {
 
 
 /** 
----- 그 타일의 밝기 배열을 리턴한다.
+---- 그 타일(n*n)의 밝기 배열을 리턴한다.
 */
 function getTileBrightness(x1, y1, sz1) {
 	const colors1 = get3x3Colors(canvas2_original_bgi, x1, y1, kanban1);	//
@@ -1156,7 +1218,7 @@ function getTileBrightness(x1, y1, sz1) {
 	return brSorted1;
 }
 /** 
----- 지정된 가상 캔버스에서, 그 타일의 밝기 배열을 리턴한다.
+---- 지정된 가상 캔버스에서, 그 타일(N*N)의 밝기 배열을 리턴한다.
 */
 function getTileBrightnessVirtual(canvas4, x1, y1, sz1) {
 	const colors1 = get3x3Colors(canvas4, x1, y1, kanban1);	//
@@ -1278,6 +1340,7 @@ function assert(ii, values, ...expectedTypes) {
 }
 
 /** 
+💎🔍🔍🔍🔍🔍🔍💎
 n*n의 2차원 배열인지 확인하는 함수.(exampleArray, hori, verti)
 e.g. assertArray2d(exampleArray, hori, verti)
  */
@@ -1304,6 +1367,7 @@ function assertArray2d(arr, col1, row) {
 
 
 /** 
+💎🔍🔍🔍🔍🔍🔍💎
 n*n의 2차원 배열이 맞으면, 데이터형을 확인해준다.(arr, index_of_column, wanted_type)
 e.g.tf = assertArrayElems(arr, 0, 'number'); */
 function assertArrayElems(arr, col1, type1) {
@@ -1320,6 +1384,52 @@ function assertArrayElems(arr, col1, type1) {
 
 	console.error('BAD', typeof(arr[0][col1]));
     return false; // 
+}
+
+
+
+/** 
+💎🔍🔍🔍🔍🔍🔍💎
+주어진 배열이 항상 증가하는지, 마지막 요소가 음수인지, 배열의 최대 수가 지정된 숫자( max1)인지 확인하는 JavaScript 함수
+max1: max index.
++--+--+--+--+--+--+--+--+
+| 0| 4| 8|12|18|  |  |-1|
++--+--+--+--+--+--+--+--+
+Is this Array of Indices?
+// Example usage:
+let exampleArray = [1, 2, 3, 5, 7, 9, -1];
+let max1 = 11;
+console.log(assertAreIndices(exampleArray, max1));  // Output: true
+
+https://pasteboard.co/kU5u0kNTxM7U.png 
+*/
+function assertAreIndices(arr, max1) {
+    // Check if the array is empty
+    if (arr.length === 0) {
+	    console.log(4);
+      return false;
+    }
+    // Check if the last element is negative
+    if (arr[arr.length - 1] >= 0) {
+    	console.log(8);
+      return false;
+    }
+
+    // Check if the array is strictly increasing and if max1 is the maximum number
+    for (let i = 0; i < arr.length-1; i++) {
+    // Check if the current element is greater than the specified max1
+        if (arr[i] > max1) {
+        	console.log(16);
+          return false;
+        }
+        // Check if array strictly increasing
+        if (i > 0 && arr[i] <= arr[i-1]) {
+	        console.log(21,i,arr[i]);
+          return false;
+        }
+    }
+
+    return true;
 }
 
 
@@ -3467,16 +3577,11 @@ function isTileBlurryRaw(row00) {
   const distToAvgMax = Math.abs(maxVal - average);
 
 	// 127에서 가까우냐 머냐를...
-	
-  // Return an object containing the calculated values
-  //printFormat(3125, "min;{0},max;{1},mid;{2},avg;{3}", minVal, maxVal, midVal, average);
   
 	//const farthest1 = findFurthestValue([minVal, maxVal], 127);
 	const farthest1 = findFurthestValue([average, 127], 127);
-	printFormat(3125, "127과의 거리:{0}, avgx:{1}", farthest1, average);
-  //printFormat(3125, "mn{0},max{1},mid{2},avg{3}, DIST:mn{5}max{6}for[1]mn{7}for[1]avg{8}for[1]max",     minVal,    maxVal,    midVal,    average, distToAvgMin, distToAvgMax, distToMinSecond, distToAvgSecond, distToMaxSecond);
+	//printFormat(3125, "[🌕🌕isTileBlurryRaw!] 127과의 거리:{0}, avgx:{1}", farthest1, average);
 
-	//return (minVal - difference); // difference가 무엇인가?
 	
   // return {
     // minVal,maxVal,midVal,average,  distToAvgMin,distToAvgMax,
