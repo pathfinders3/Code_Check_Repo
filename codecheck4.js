@@ -1815,10 +1815,10 @@ function findKeywordInSelectAndSelect(selectTag, keyword) {
   const options = selectTag.options;
 
   // Loop through each option (선택된 항목의 다음부터 찾기 시작합니다.)
-  for (let i = selectedIndex + 1; i < options.length; i++) {
-
-	let index = (currentPos + i) % arr.length;
-    const option = options[i];
+  //for (let i = selectedIndex + 1; i < options.length; i++) {
+  for (let i=0; i<options.length; i++) {
+	let index = (selectedIndex+1 +i) % options.length;
+    const option = options[index];
     const optionText = option.text.toLowerCase();
 
     // 단어 전체 매치
@@ -1826,7 +1826,9 @@ function findKeywordInSelectAndSelect(selectTag, keyword) {
       // If it does, select the option and scroll to it
       option.selected = true;
       selectTag.scrollIntoView({ behavior: 'smooth' });
-	  // console.log("이 키워드를 찾음", optionText);
+	  
+	  if (index <= selectedIndex) setTextFlashInDiv('verbose1', "함수 리스트 EOL 통과");
+	
       return option;
     }
 
@@ -1837,15 +1839,18 @@ function findKeywordInSelectAndSelect(selectTag, keyword) {
         // If it does, select the option and scrollse to it
         option.selected = true;
         selectTag.scrollIntoView({ behavior: 'smooth' });
+		
+		if (index <= selectedIndex) setTextFlashInDiv('verbose1', "함수 리스트 EOL 통과");
+		
         return option;
       }
     }
   }
 
   // If no option is found, return null, 처음으로도 옮긴다.
-  setTextFlashInDiv('verbose1', "함수 리스트 EOL 통과");
-  options[0].selected = true;
-  selectTag.scrollIntoView({ behavior: 'smooth' });
+  // setTextFlashInDiv('verbose1', "함수 리스트 EOL 통과");
+  // options[0].selected = true;
+  // selectTag.scrollIntoView({ behavior: 'smooth' });
   
   return null;
 }
